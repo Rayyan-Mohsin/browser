@@ -38,3 +38,13 @@ test('Store falls back to defaults and backs up a corrupt file', () => {
   assert.deepEqual(store.get(), { count: 0 });
   assert.equal(fs.existsSync(`${file}.bak`), true);
 });
+
+test('Store reset fully overwrites, unlike set which only merges', () => {
+  const file = tmpFile();
+  const store = new Store(file, { a: 1, b: 2 });
+  store.set({ a: 99, extra: 'stale' });
+  store.reset();
+  assert.deepEqual(store.get(), { a: 1, b: 2 });
+  const reloaded = new Store(file, { a: 1, b: 2 });
+  assert.deepEqual(reloaded.get(), { a: 1, b: 2 });
+});

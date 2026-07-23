@@ -58,8 +58,18 @@ export function renderAddressBar(el, state, api, { onBookmarkChange, onShare }) 
     input.value = displayUrlFor(tab);
   }
   input.dataset.tabId = state.activeId || '';
+  input.classList.toggle('private-active', !!tab && tab.isPrivate);
 
   el.innerHTML = '';
+
+  if (tab && tab.isPrivate) {
+    const badge = document.createElement('span');
+    badge.className = 'private-badge';
+    badge.dataset.tooltip = 'This tab is private: history and cookies aren’t saved.';
+    badge.textContent = 'Private';
+    el.appendChild(badge);
+  }
+
   el.appendChild(input);
 
   const canActOnPage = !!tab && !isNewTabUrl(tab.url);

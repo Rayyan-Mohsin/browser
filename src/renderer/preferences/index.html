@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Advanced Settings</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f2f2f5;
+    --card-bg: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: rgba(0, 0, 0, 0.55);
+    --border: rgba(0, 0, 0, 0.1);
+    --accent: #0a84ff;
+    --hover-bg: rgba(0, 0, 0, 0.05);
+    --danger: #ff453a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card-bg: #262628;
+      --text-primary: #f5f5f5;
+      --text-secondary: rgba(255, 255, 255, 0.55);
+      --border: rgba(255, 255, 255, 0.1);
+      --hover-bg: rgba(255, 255, 255, 0.07);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    font-size: 13px;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  body { overflow-y: auto; }
+  .page { max-width: 560px; margin: 0 auto; padding: 22px 24px 32px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .subtitle { color: var(--text-secondary); margin: 0 0 20px; font-size: 12px; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .card h2 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin: 0 0 10px;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  .row-label { font-size: 13px; }
+  .row-desc { color: var(--text-secondary); font-size: 11px; margin-top: 2px; }
+
+  .segmented { display: inline-flex; background: var(--hover-bg); border-radius: 8px; padding: 2px; gap: 2px; }
+  .segmented button {
+    border: none; background: transparent; padding: 5px 10px; border-radius: 6px;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+  .segmented button.selected { background: var(--card-bg); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+
+  .switch {
+    position: relative; width: 34px; height: 20px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.16); border: none; cursor: pointer; padding: 0; flex-shrink: 0;
+    transition: background-color 150ms ease;
+  }
+  @media (prefers-color-scheme: dark) { .switch { background: rgba(255,255,255,0.18); } }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    transition: transform 150ms ease;
+  }
+  .switch.on { background: var(--accent); }
+  .switch.on::after { transform: translateX(14px); }
+
+  .search-input, .btn {
+    font-family: inherit;
+  }
+  .search-input {
+    width: 100%; height: 30px; padding: 0 10px; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text-primary);
+    font-size: 12.5px; outline: none; margin-bottom: 10px;
+  }
+  .search-input:focus { border-color: var(--accent); }
+
+  .history-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .history-row {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-row:last-child { border-bottom: none; }
+  .history-row:hover { background: var(--hover-bg); }
+  .history-text { flex: 1; min-width: 0; }
+  .history-title { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-url { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-time { font-size: 11px; color: var(--text-secondary); flex-shrink: 0; white-space: nowrap; }
+  .icon-btn {
+    flex-shrink: 0; width: 22px; height: 22px; border: none; border-radius: 5px;
+    background: transparent; color: var(--text-secondary); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--hover-bg); }
+  .empty-row { padding: 14px; text-align: center; color: var(--text-secondary); font-size: 12px; }
+
+  .btn {
+    display: inline-block; padding: 7px 14px; border-radius: 7px; border: none;
+    background: var(--hover-bg); color: var(--text-primary); font-size: 12.5px; font-weight: 500;
+    cursor: pointer;
+  }
+  .btn:hover { background: rgba(0, 0, 0, 0.09); }
+  @media (prefers-color-scheme: dark) { .btn:hover { background: rgba(255,255,255,0.13); } }
+  .btn.danger { color: var(--danger); }
+  .btn.danger:hover { background: rgba(255, 69, 58, 0.12); }
+  .btn-row { display: flex; justify-content: flex-end; margin-top: 10px; }
+
+  .about-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .about-row:last-child { margin-bottom: 0; }
+  .about-row span:last-child { color: var(--text-primary); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Advanced Settings</h1>
+    <p class="subtitle">Power-user options, kept separate from the in-app Settings menu.</p>
+
+    <div class="card">
+      <h2>History</h2>
+      <input type="text" class="search-input" id="history-search" placeholder="Search history…" />
+      <div class="history-list" id="history-list"></div>
+      <div class="btn-row">
+        <button class="btn danger" id="clear-history-btn">Clear All History</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>History Retention</h2>
+      <div class="row">
+        <div>
+          <div class="row-label">Automatically delete history older than</div>
+          <div class="row-desc">Applied now, and again each time the app starts.</div>
+        </div>
+        <div class="segmented" id="retention-segmented"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Privacy</h2>
+      <div class="row">
+        <div>
+          <div class="row-label">Clear all browsing data on quit</div>
+          <div class="row-desc">Wipes history, cache, and cookies every time the app closes.</div>
+        </div>
+        <button class="switch" id="clear-on-quit-switch"></button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>About</h2>
+      <div id="about-rows"></div>
+      <div class="btn-row">
+        <button class="btn danger" id="reset-settings-btn">Reset All Settings to Defaults</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const api = window.preferencesAPI;
+    const RETENTION_OPTIONS = [
+      { value: null, label: 'Never' },
+      { value: 1, label: '1 Day' },
+      { value: 7, label: '1 Week' },
+      { value: 30, label: '1 Month' },
+      { value: 90, label: '3 Months' },
+    ];
+
+    function fmtDate(ts) {
+      return new Date(ts).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      });
+    }
+
+    async function loadHistory(filter) {
+      const list = document.getElementById('history-list');
+      const entries = await api.invoke('history:list');
+      const query = (filter || '').trim().toLowerCase();
+      const filtered = query
+        ? entries.filter((e) => (e.title || '').toLowerCase().includes(query) || e.url.toLowerCase().includes(query))
+        : entries;
+
+      list.innerHTML = '';
+      if (filtered.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-row';
+        empty.textContent = query ? 'No matching history' : 'No history yet';
+        list.appendChild(empty);
+        return;
+      }
+      for (const entry of filtered) {
+        const row = document.createElement('div');
+        row.className = 'history-row';
+
+        const text = document.createElement('div');
+        text.className = 'history-text';
+        const title = document.createElement('div');
+        title.className = 'history-title';
+        title.textContent = entry.title || entry.url;
+        const url = document.createElement('div');
+        url.className = 'history-url';
+        url.textContent = entry.url;
+        text.appendChild(title);
+        text.appendChild(url);
+        row.appendChild(text);
+
+        const time = document.createElement('div');
+        time.className = 'history-time';
+        time.textContent = fmtDate(entry.visitedAt);
+        row.appendChild(time);
+
+        const del = document.createElement('button');
+        del.className = 'icon-btn';
+        del.textContent = '✕';
+        del.title = 'Delete this entry';
+        del.addEventListener('click', async () => {
+          await api.invoke('history:removeEntry', { id: entry.id });
+          loadHistory(document.getElementById('history-search').value);
+        });
+        row.appendChild(del);
+
+        list.appendChild(row);
+      }
+    }
+
+    document.getElementById('history-search').addEventListener('input', (e) => loadHistory(e.target.value));
+    document.getElementById('clear-history-btn').addEventListener('click', async () => {
+      if (!confirm('Delete all browsing history? This cannot be undone.')) return;
+      await api.invoke('history:clear');
+      loadHistory(document.getElementById('history-search').value);
+    });
+
+    async function initRetention() {
+      const settings = await api.invoke('settings:get');
+      const group = document.getElementById('retention-segmented');
+      group.innerHTML = '';
+      for (const opt of RETENTION_OPTIONS) {
+        const btn = document.createElement('button');
+        btn.textContent = opt.label;
+        btn.classList.toggle('selected', settings.historyRetentionDays === opt.value);
+        btn.addEventListener('click', async () => {
+          await api.invoke('advanced:setHistoryRetention', { days: opt.value });
+          [...group.children].forEach((b) => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          loadHistory(document.getElementById('history-search').value);
+        });
+        group.appendChild(btn);
+      }
+    }
+
+    async function initClearOnQuit() {
+      const settings = await api.invoke('settings:get');
+      const sw = document.getElementById('clear-on-quit-switch');
+      sw.classList.toggle('on', !!settings.clearDataOnQuit);
+      sw.addEventListener('click', async () => {
+        const next = !sw.classList.contains('on');
+        sw.classList.toggle('on', next);
+        await api.invoke('settings:set', { clearDataOnQuit: next });
+      });
+    }
+
+    async function initAbout() {
+      const info = await api.invoke('advanced:getVersionInfo');
+      const wrap = document.getElementById('about-rows');
+      wrap.innerHTML = '';
+      const rows = [
+        ['App Version', info.app],
+        ['Electron', info.electron],
+        ['Chromium', info.chrome],
+        ['Node', info.node],
+      ];
+      for (const [label, value] of rows) {
+        const row = document.createElement('div');
+        row.className = 'about-row';
+        const l = document.createElement('span');
+        l.textContent = label;
+        const v = document.createElement('span');
+        v.textContent = value;
+        row.appendChild(l);
+        row.appendChild(v);
+        wrap.appendChild(row);
+      }
+    }
+
+    document.getElementById('reset-settings-btn').addEventListener('click', async () => {
+      if (!confirm('Reset all settings to their defaults? This does not delete your bookmarks or history.')) return;
+      await api.invoke('advanced:resetSettings');
+      initRetention();
+      initClearOnQuit();
+    });
+
+    loadHistory('');
+    initRetention();
+    initClearOnQuit();
+    initAbout();
+  </script>
+</body>
+</html>

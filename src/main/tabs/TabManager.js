@@ -7,10 +7,17 @@ const { HEADER_HEIGHT } = require('../../shared/layout');
 const { normalizeInput } = require('./urlNormalize');
 
 const NEW_TAB_BASE_URL = `file://${path.join(__dirname, '../../renderer/newtab/index.html')}`;
+// Not prefixed with "persist:", so Electron keeps this session entirely in
+// memory: no cookies/cache/storage for it ever touch disk, and it's gone
+// once nothing references it (e.g. app quit). Shared by all private tabs so
+// they behave like one private "session", isolated from the normal profile.
+const PRIVATE_PARTITION = 'private-mode';
 
 /** New-tab search box respects the user's configured engine via a query param (it has no IPC access). */
-function buildNewTabUrl(searchEngineTemplate) {
-  return `${NEW_TAB_BASE_URL}?engine=${encodeURIComponent(searchEngineTemplate)}`;
+function buildNewTabUrl(searchEngineTemplate, isPrivate) {
+  const params = new URLSearchParams({ engine: searchEngineTemplate });
+  if (isPrivate) params.set('private', '1');
+  return `${NEW_TAB_BASE_URL}?${params.toString()}`;
 }
 
 /** Manages one WebContentsView per tab, attaching only the active one below the chrome header. */
@@ -31,6 +38,19 @@ class TabManager {
     // reliably in sync).
     this.headerHeight = HEADER_HEIGHT;
     this.overlayOpen = false;
+    // Id of the tab currently in HTML5 (in-page) fullscreen, e.g. a video
+    // player -- null when no tab is fullscreen.
+    this.fullscreenTabId = null;
+
+    // Safety net: if native fullscreen ends by some path other than the
+    // page's own exit-fullscreen action (e.g. the user used the OS-level
+    // fullscreen toggle), make sure our bounds/state don't stay stuck.
+    win.on('leave-full-screen', () => {
+      if (this.fullscreenTabId) {
+        this.fullscreenTabId = null;
+        this.resizeActiveView();
+      }
+    });
   }
 
   list() {
@@ -48,6 +68,7 @@ class TabManager {
       isLoading: wc.isLoadingMainFrame(),
       canGoBack: nav ? nav.canGoBack() : wc.canGoBack(),
       canGoForward: nav ? nav.canGoForward() : wc.canGoForward(),
+      isPrivate: tab.isPrivate,
     };
   }
 
@@ -55,20 +76,32 @@ class TabManager {
     this.onTabsUpdated(this.list());
   }
 
-  createTab(url) {
+  /** Whether the currently active tab is a private one — used so "+"/Cmd+T stays in private mode. */
+  isActiveTabPrivate() {
+    const tab = this.tabs.get(this.activeId);
+    return !!(tab && tab.isPrivate);
+  }
+
+  createTab(url, options = {}) {
+    const isPrivate = !!options.private;
     const isBlank = !url;
     const id = crypto.randomUUID();
-    const view = new WebContentsView({
-      webPreferences: {
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    });
+    const webPreferences = {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    };
+    if (isPrivate) webPreferences.partition = PRIVATE_PARTITION;
+    const view = new WebContentsView({ webPreferences });
     const tab = {
       id,
       view,
-      state: { url: url || buildNewTabUrl(this.getSearchEngine()), title: 'New Tab', favicon: null },
+      isPrivate,
+      state: {
+        url: url || buildNewTabUrl(this.getSearchEngine(), isPrivate),
+        title: 'New Tab',
+        favicon: null,
+      },
     };
     this.tabs.set(id, tab);
     this.order.push(id);
@@ -85,8 +118,8 @@ class TabManager {
     wc.on('did-navigate', (_e, navUrl) => {
       tab.state.url = navUrl;
       this._emitUpdate();
-      // Exclude our own local pages (currently just the new-tab page) from history.
-      if (!navUrl.startsWith('file://')) {
+      // Exclude our own local pages and private tabs from history.
+      if (!navUrl.startsWith('file://') && !tab.isPrivate) {
         this.onNavigate({ url: navUrl, title: tab.state.title, favicon: tab.state.favicon });
       }
     });
@@ -96,6 +129,23 @@ class TabManager {
     });
     wc.on('did-start-loading', () => this._emitUpdate());
     wc.on('did-stop-loading', () => this._emitUpdate());
+
+    // In-page (HTML5) fullscreen, e.g. a video player's fullscreen button —
+    // distinct from the app's own window-fullscreen toggle. Hide the header
+    // entirely and let the tab's content cover the whole window, matching
+    // Safari's behavior.
+    wc.on('enter-html-full-screen', () => {
+      if (this.activeId !== id) return;
+      this.fullscreenTabId = id;
+      this.win.setFullScreen(true);
+      this.resizeActiveView();
+    });
+    wc.on('leave-html-full-screen', () => {
+      if (this.fullscreenTabId !== id) return;
+      this.fullscreenTabId = null;
+      this.win.setFullScreen(false);
+      this.resizeActiveView();
+    });
 
     wc.loadURL(tab.state.url);
 
@@ -127,6 +177,10 @@ class TabManager {
     if (!tab) return;
     const wasActive = this.activeId === id;
     if (wasActive) this.win.contentView.removeChildView(tab.view);
+    if (this.fullscreenTabId === id) {
+      this.fullscreenTabId = null;
+      this.win.setFullScreen(false);
+    }
 
     tab.view.webContents.close();
     this.tabs.delete(id);
@@ -180,11 +234,12 @@ class TabManager {
     const tab = this.tabs.get(this.activeId);
     if (!tab) return;
     const [width, height] = this.win.getContentSize();
+    const isFullscreen = this.fullscreenTabId === this.activeId;
     tab.view.setBounds({
       x: 0,
-      y: this.headerHeight,
+      y: isFullscreen ? 0 : this.headerHeight,
       width,
-      height: Math.max(0, height - this.headerHeight),
+      height: isFullscreen ? height : Math.max(0, height - this.headerHeight),
     });
   }
 

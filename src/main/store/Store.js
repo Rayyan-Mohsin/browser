@@ -43,6 +43,13 @@ class Store {
     return this.data;
   }
 
+  /** Fully overwrites the store back to its defaults (unlike set, which only merges). */
+  reset() {
+    this.data = { ...this.defaults };
+    this._writeAtomic(this.data);
+    return this.data;
+  }
+
   _writeAtomic(data) {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
     const tmpPath = `${this.filePath}.tmp`;

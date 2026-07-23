@@ -42,3 +42,19 @@ test('settings persist across store instances', () => {
   const reloaded = new SettingsStore(file);
   assert.equal(reloaded.get().tabBarLayout, 'compact');
 });
+
+test('defaults include no history retention and clearDataOnQuit off', () => {
+  const store = new SettingsStore(tmpFile());
+  assert.equal(store.get().historyRetentionDays, null);
+  assert.equal(store.get().clearDataOnQuit, false);
+});
+
+test('reset restores defaults, discarding prior changes', () => {
+  const store = new SettingsStore(tmpFile());
+  store.set({ tabBarLayout: 'compact', historyRetentionDays: 30, clearDataOnQuit: true });
+  store.reset();
+  const settings = store.get();
+  assert.equal(settings.tabBarLayout, 'separate');
+  assert.equal(settings.historyRetentionDays, null);
+  assert.equal(settings.clearDataOnQuit, false);
+});

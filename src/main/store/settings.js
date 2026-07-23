@@ -13,6 +13,9 @@ const DEFAULTS = {
   customSearchEngine: '', // user's own %s template, used when searchEngineId is 'custom'
   tabBarLayout: 'separate', // 'separate' | 'compact' (Safari-style)
   extensions: [],
+  // Advanced-settings-window-only fields (not exposed in the in-app panel):
+  historyRetentionDays: null, // null = keep forever; else auto-prune older entries
+  clearDataOnQuit: false,
 };
 
 class SettingsStore {
@@ -31,6 +34,10 @@ class SettingsStore {
   setTheme(patch) {
     const current = this.store.get().theme;
     return this.store.set({ theme: { ...current, ...patch } }).theme;
+  }
+
+  reset() {
+    return this.store.reset();
   }
 }
 

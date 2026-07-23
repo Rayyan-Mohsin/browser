@@ -47,6 +47,20 @@ class HistoryStore {
   clear() {
     this.store.set({ entries: [] });
   }
+
+  removeEntry(id) {
+    const { entries } = this.store.get();
+    this.store.set({ entries: entries.filter((e) => e.id !== id) });
+  }
+
+  /** Used by the automatic retention setting in the Advanced Settings window. */
+  pruneOlderThan(days) {
+    if (!days) return;
+    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    const { entries } = this.store.get();
+    const next = entries.filter((e) => e.visitedAt >= cutoff);
+    if (next.length !== entries.length) this.store.set({ entries: next });
+  }
 }
 
 module.exports = { HistoryStore };

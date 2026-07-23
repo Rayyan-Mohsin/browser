@@ -130,6 +130,23 @@ generate it from a 1024x1024 PNG.
     of the box. v1 ships a simple enable/disable/remove list in Settings
     instead; full toolbar UI is a future option via the community package
     `electron-chrome-extensions`.
+- **Private tabs**: File → New Private Tab (⌘⇧N) opens a tab on its own
+  in-memory Electron session partition — no cookies, cache, or history are
+  ever written to disk for it, and it's gone once closed. Plain new tabs
+  opened from a private one inherit private mode, matching how other
+  browsers' incognito windows behave. Indicated by a small badge/tint in the
+  address bar and tab strip (deliberately not labeled "incognito").
+- **Video fullscreen**: pressing a video player's own fullscreen button
+  (HTML5 Fullscreen API — distinct from the app's own window-fullscreen
+  toggle) hides the tab bar/address bar entirely and enters real macOS
+  fullscreen, Safari-style. `View → Toggle Full Screen` (window fullscreen)
+  is unaffected and still shows the normal chrome.
+- **Advanced Settings**: a separate native window (app menu → Advanced
+  Settings…, ⌘,) — deliberately *not* part of the in-app Settings popover —
+  with a searchable full history list with per-entry delete, an automatic
+  history-retention policy (applied on launch and instantly on change),
+  "clear all data on quit", app/Electron/Chromium version info, and a
+  reset-to-defaults action.
 
 ## Project layout
 
@@ -137,9 +154,11 @@ generate it from a 1024x1024 PNG.
 src/
   shared/layout.js        Layout constants + search engine presets, shared by main + renderer
   main/                   Electron main process (window, tabs, IPC, stores, menu, downloads)
-  preload/                contextBridge-based IPC allowlist
+  preload/                contextBridge-based IPC allowlists (one for the main window, a
+                           narrower one for the separate Advanced Settings window)
   renderer/chrome/        The browser's own UI (tab bar/address bar/toolbar/settings/tooltips)
   renderer/newtab/        Default page for a fresh tab (search box)
+  renderer/preferences/   The separate native Advanced Settings window's page
 test/                     node:test unit tests for store/history/downloads/URL logic
 ```
 
@@ -147,6 +166,11 @@ test/                     node:test unit tests for store/history/downloads/URL l
 
 - No auto-update mechanism (kept out deliberately to avoid background
   telemetry/bloat); add `electron-updater` later if you want it.
-- Extensions: see the two limitations above.
+- Extensions: see the two limitations above (also not loaded into private
+  tabs' session partition, matching how other browsers treat incognito).
 - Downloads are tracked per-session in `downloads.json` but there's no
   pause/resume/cancel UI yet — only Open and Show-in-Finder.
+- Tab creation/removal doesn't animate beyond the new tab's own entrance
+  (by design, per user request) — the tab strip fully re-renders each
+  update, so a persistent-DOM-diffing rewrite would be needed to animate
+  e.g. a tab smoothly resizing when switching in Compact layout.

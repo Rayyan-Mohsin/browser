@@ -7,132 +7,16 @@ const SEARCH_ENGINE_OPTIONS = [
 
 const SHORTCUTS = [
   ['New Tab', '⌘T'],
+  ['New Private Tab', '⌘⇧N'],
   ['Close Tab', '⌘W'],
   ['Reload', '⌘R'],
   ['Zoom In', '⌘+'],
   ['Zoom Out', '⌘-'],
   ['Reset Zoom', '⌘0'],
   ['Full Screen', '⌃⌘F'],
+  ['Advanced Settings', '⌘,'],
   ['Quit', '⌘Q'],
 ];
-
-export function renderSettingsPanel(el, state, api, { onSettingsChange }) {
-  el.innerHTML = '';
-  const settings = state.settings || {};
-  const theme = settings.theme || { mode: 'system' };
-
-  el.appendChild(heading('Appearance'));
-  const modeRow = document.createElement('div');
-  modeRow.className = 'row';
-  const themeDescriptions = {
-    light: 'Always use the light appearance.',
-    dark: 'Always use the dark appearance.',
-    system: 'Match your Mac’s current appearance and switch automatically.',
-  };
-  for (const mode of ['light', 'dark', 'system']) {
-    const label = document.createElement('label');
-    label.dataset.tooltip = themeDescriptions[mode];
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'theme-mode';
-    radio.value = mode;
-    radio.checked = theme.mode === mode;
-    radio.addEventListener('change', async () => {
-      await api.invoke('theme:set', { mode });
-      onSettingsChange();
-    });
-    label.appendChild(radio);
-    label.append(` ${mode[0].toUpperCase()}${mode.slice(1)}`);
-    modeRow.appendChild(label);
-  }
-  el.appendChild(modeRow);
-
-  el.appendChild(divider());
-  el.appendChild(heading('Tab Bar'));
-  const layoutRow = document.createElement('div');
-  layoutRow.className = 'row';
-  const layoutDescriptions = {
-    separate: 'Tabs and the address bar are shown in two separate rows (default).',
-    compact: 'Tabs and the address bar merge into one row, Safari-style — the active tab becomes the address field.',
-  };
-  for (const layout of ['separate', 'compact']) {
-    const label = document.createElement('label');
-    label.dataset.tooltip = layoutDescriptions[layout];
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'tab-bar-layout';
-    radio.value = layout;
-    radio.checked = (settings.tabBarLayout || 'separate') === layout;
-    radio.addEventListener('change', async () => {
-      await api.invoke('settings:set', { tabBarLayout: layout });
-      onSettingsChange();
-    });
-    label.appendChild(radio);
-    label.append(` ${layout[0].toUpperCase()}${layout.slice(1)}`);
-    layoutRow.appendChild(label);
-  }
-  el.appendChild(layoutRow);
-
-  el.appendChild(divider());
-  el.appendChild(heading('Search Engine'));
-  el.appendChild(buildSearchEngineSection(settings, api, onSettingsChange));
-
-  el.appendChild(divider());
-  el.appendChild(heading('Bookmarks'));
-  const bmRow = document.createElement('div');
-  bmRow.className = 'row';
-  const bmLabel = document.createElement('label');
-  bmLabel.dataset.tooltip = 'Show a row of your top-level bookmarks below the tab bar.';
-  const bmToggle = document.createElement('input');
-  bmToggle.type = 'checkbox';
-  bmToggle.checked = !!settings.showBookmarksBar;
-  bmToggle.addEventListener('change', async () => {
-    await api.invoke('settings:set', { showBookmarksBar: bmToggle.checked });
-    onSettingsChange();
-  });
-  bmLabel.appendChild(bmToggle);
-  bmLabel.append(' Show bookmarks bar');
-  bmRow.appendChild(bmLabel);
-  el.appendChild(bmRow);
-
-  el.appendChild(divider());
-  el.appendChild(heading('History'));
-  el.appendChild(buildHistorySection(state, api, () => renderSettingsPanel(el, state, api, { onSettingsChange })));
-
-  el.appendChild(divider());
-  el.appendChild(heading('Downloads'));
-  el.appendChild(buildDownloadsSection(api));
-
-  el.appendChild(divider());
-  el.appendChild(heading('Privacy'));
-  el.appendChild(buildPrivacySection(api, () => renderSettingsPanel(el, state, api, { onSettingsChange })));
-
-  el.appendChild(divider());
-  el.appendChild(heading('Extensions'));
-  const extList = document.createElement('div');
-  el.appendChild(extList);
-  refreshExtensionList(extList, api, () => renderSettingsPanel(el, state, api, { onSettingsChange }));
-
-  const loadBtn = document.createElement('button');
-  loadBtn.className = 'icon-btn';
-  loadBtn.style.width = '100%';
-  loadBtn.textContent = 'Load Unpacked Extension…';
-  loadBtn.dataset.tooltip = 'Pick a folder containing a manifest.json to load it as a browser extension.';
-  loadBtn.addEventListener('click', async () => {
-    const dir = await api.invoke('extensions:openLoadDialog');
-    if (!dir) return;
-    const result = await api.invoke('extensions:load', { path: dir });
-    if (result && result.error) {
-      alert(`Failed to load extension: ${result.error}`);
-    }
-    renderSettingsPanel(el, state, api, { onSettingsChange });
-  });
-  el.appendChild(loadBtn);
-
-  el.appendChild(divider());
-  el.appendChild(heading('Keyboard Shortcuts'));
-  el.appendChild(buildShortcutsSection());
-}
 
 function heading(text) {
   const h = document.createElement('h3');
@@ -140,45 +24,181 @@ function heading(text) {
   return h;
 }
 
-function divider() {
-  const d = document.createElement('div');
-  d.className = 'divider';
-  return d;
+function section(title) {
+  const wrap = document.createElement('div');
+  wrap.className = 'settings-section';
+  wrap.appendChild(heading(title));
+  return wrap;
+}
+
+/** A row of pill buttons acting as one exclusive choice — replaces native radio inputs. */
+function segmented({ options, current, onChange }) {
+  const group = document.createElement('div');
+  group.className = 'segmented';
+  for (const opt of options) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = opt.label;
+    btn.classList.toggle('selected', opt.value === current);
+    btn.setAttribute('aria-pressed', String(opt.value === current));
+    if (opt.tooltip) btn.dataset.tooltip = opt.tooltip;
+    btn.addEventListener('click', () => onChange(opt.value));
+    group.appendChild(btn);
+  }
+  return group;
+}
+
+/** A macOS-style pill toggle — replaces native checkbox inputs. */
+function toggleSwitch({ checked, onChange }) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'switch' + (checked ? ' on' : '');
+  btn.setAttribute('role', 'switch');
+  btn.setAttribute('aria-checked', String(checked));
+  btn.addEventListener('click', () => {
+    const next = !btn.classList.contains('on');
+    btn.classList.toggle('on', next);
+    btn.setAttribute('aria-checked', String(next));
+    onChange(next);
+  });
+  return btn;
+}
+
+function switchRow(label, tooltip, checked, onChange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  if (tooltip) row.dataset.tooltip = tooltip;
+  const span = document.createElement('span');
+  span.textContent = label;
+  row.appendChild(span);
+  row.appendChild(toggleSwitch({ checked, onChange }));
+  return row;
+}
+
+function actionButton(label, onClick, { danger = false, tooltip } = {}) {
+  const btn = document.createElement('button');
+  btn.className = 'settings-btn' + (danger ? ' danger' : '');
+  btn.textContent = label;
+  if (tooltip) btn.dataset.tooltip = tooltip;
+  btn.addEventListener('click', onClick);
+  return btn;
+}
+
+function emptyRow(text) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.textContent = text;
+  return row;
+}
+
+export function renderSettingsPanel(el, state, api, { onSettingsChange }) {
+  el.innerHTML = '';
+  const settings = state.settings || {};
+  const theme = settings.theme || { mode: 'system' };
+
+  // Appearance
+  const appearance = section('Appearance');
+  appearance.appendChild(
+    segmented({
+      options: [
+        { value: 'light', label: 'Light', tooltip: 'Always use the light appearance.' },
+        { value: 'dark', label: 'Dark', tooltip: 'Always use the dark appearance.' },
+        { value: 'system', label: 'System', tooltip: 'Match your Mac’s appearance and switch automatically.' },
+      ],
+      current: theme.mode,
+      onChange: async (mode) => {
+        await api.invoke('theme:set', { mode });
+        onSettingsChange();
+      },
+    })
+  );
+  el.appendChild(appearance);
+
+  // Tab bar layout
+  const tabBar = section('Tab Bar');
+  tabBar.appendChild(
+    segmented({
+      options: [
+        { value: 'separate', label: 'Separate', tooltip: 'Tabs and the address bar are shown in two rows (default).' },
+        {
+          value: 'compact',
+          label: 'Compact',
+          tooltip: 'Tabs and the address bar merge into one row, Safari-style — the active tab becomes the address field.',
+        },
+      ],
+      current: settings.tabBarLayout || 'separate',
+      onChange: async (layout) => {
+        await api.invoke('settings:set', { tabBarLayout: layout });
+        onSettingsChange();
+      },
+    })
+  );
+  el.appendChild(tabBar);
+
+  // Search engine
+  const searchEngine = section('Search Engine');
+  searchEngine.appendChild(buildSearchEngineSection(settings, api, onSettingsChange));
+  el.appendChild(searchEngine);
+
+  // Bookmarks
+  const bookmarks = section('Bookmarks');
+  bookmarks.appendChild(
+    switchRow(
+      'Show bookmarks bar',
+      'Show a row of your top-level bookmarks below the tab bar.',
+      !!settings.showBookmarksBar,
+      async (checked) => {
+        await api.invoke('settings:set', { showBookmarksBar: checked });
+        onSettingsChange();
+      }
+    )
+  );
+  el.appendChild(bookmarks);
+
+  // History
+  const history = section('History');
+  history.appendChild(buildHistorySection(state, api, () => renderSettingsPanel(el, state, api, { onSettingsChange })));
+  el.appendChild(history);
+
+  // Downloads
+  const downloads = section('Downloads');
+  downloads.appendChild(buildDownloadsSection(api));
+  el.appendChild(downloads);
+
+  // Privacy
+  const privacy = section('Privacy');
+  privacy.appendChild(buildPrivacySection(api, () => renderSettingsPanel(el, state, api, { onSettingsChange })));
+  el.appendChild(privacy);
+
+  // Extensions
+  const extensions = section('Extensions');
+  const extList = document.createElement('div');
+  extensions.appendChild(extList);
+  refreshExtensionList(extList, api, () => renderSettingsPanel(el, state, api, { onSettingsChange }));
+  extensions.appendChild(
+    actionButton(
+      'Load Unpacked Extension…',
+      async () => {
+        const dir = await api.invoke('extensions:openLoadDialog');
+        if (!dir) return;
+        const result = await api.invoke('extensions:load', { path: dir });
+        if (result && result.error) alert(`Failed to load extension: ${result.error}`);
+        renderSettingsPanel(el, state, api, { onSettingsChange });
+      },
+      { tooltip: 'Pick a folder containing a manifest.json to load it as a browser extension.' }
+    )
+  );
+  el.appendChild(extensions);
+
+  // Keyboard shortcuts
+  const shortcuts = section('Keyboard Shortcuts');
+  shortcuts.appendChild(buildShortcutsSection());
+  el.appendChild(shortcuts);
 }
 
 function buildSearchEngineSection(settings, api, onSettingsChange) {
   const wrap = document.createElement('div');
   const currentId = settings.searchEngineId || 'google';
-
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.style.flexWrap = 'wrap';
-  for (const { id, label } of SEARCH_ENGINE_OPTIONS) {
-    const optLabel = document.createElement('label');
-    optLabel.dataset.tooltip =
-      id === 'custom'
-        ? 'Use your own search engine by supplying a URL template.'
-        : `Use ${label} for address bar searches.`;
-    const radio = document.createElement('input');
-    radio.type = 'radio';
-    radio.name = 'search-engine';
-    radio.value = id;
-    radio.checked = currentId === id;
-    radio.addEventListener('change', async () => {
-      if (id !== 'custom') {
-        const result = await api.invoke('settings:setSearchEngine', { id });
-        if (result && result.error) alert(result.error);
-        onSettingsChange();
-      } else {
-        customInput.classList.remove('hidden');
-        customInput.focus();
-      }
-    });
-    optLabel.appendChild(radio);
-    optLabel.append(` ${label}`);
-    row.appendChild(optLabel);
-  }
-  wrap.appendChild(row);
 
   const customInput = document.createElement('input');
   customInput.className = 'text-input';
@@ -199,6 +219,27 @@ function buildSearchEngineSection(settings, api, onSettingsChange) {
       onSettingsChange();
     }
   });
+
+  wrap.appendChild(
+    segmented({
+      options: SEARCH_ENGINE_OPTIONS.map(({ id, label }) => ({
+        value: id,
+        label,
+        tooltip: id === 'custom' ? 'Use your own search engine by supplying a URL template.' : `Use ${label} for address bar searches.`,
+      })),
+      current: currentId,
+      onChange: async (id) => {
+        if (id !== 'custom') {
+          const result = await api.invoke('settings:setSearchEngine', { id });
+          if (result && result.error) alert(result.error);
+          onSettingsChange();
+        } else {
+          customInput.classList.remove('hidden');
+          customInput.focus();
+        }
+      },
+    })
+  );
   wrap.appendChild(customInput);
 
   return wrap;
@@ -207,40 +248,31 @@ function buildSearchEngineSection(settings, api, onSettingsChange) {
 function buildPrivacySection(api, onCleared) {
   const wrap = document.createElement('div');
 
+  const checkboxState = { history: false, cache: false, cookies: false };
   const options = [
     { key: 'history', label: 'Browsing history', tooltip: 'Deletes your saved browsing history.' },
     { key: 'cache', label: 'Cached files', tooltip: 'Frees up space; some pages may load slower next time.' },
     { key: 'cookies', label: 'Cookies & site data', tooltip: 'Signs you out of most sites.' },
   ];
-  const checkboxes = {};
   for (const opt of options) {
-    const row = document.createElement('label');
-    row.className = 'checkbox-row';
-    row.dataset.tooltip = opt.tooltip;
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    checkboxes[opt.key] = cb;
-    row.appendChild(cb);
-    row.append(` ${opt.label}`);
-    wrap.appendChild(row);
+    wrap.appendChild(
+      switchRow(opt.label, opt.tooltip, false, (checked) => {
+        checkboxState[opt.key] = checked;
+      })
+    );
   }
 
-  const clearBtn = document.createElement('button');
-  clearBtn.className = 'icon-btn danger-btn';
-  clearBtn.style.width = '100%';
-  clearBtn.textContent = 'Clear Browsing Data';
-  clearBtn.dataset.tooltip = 'Permanently deletes the selected data. This cannot be undone.';
-  clearBtn.addEventListener('click', async () => {
-    const payload = {
-      history: checkboxes.history.checked,
-      cache: checkboxes.cache.checked,
-      cookies: checkboxes.cookies.checked,
-    };
-    if (!payload.history && !payload.cache && !payload.cookies) return;
-    await api.invoke('privacy:clearData', payload);
-    onCleared();
-  });
-  wrap.appendChild(clearBtn);
+  wrap.appendChild(
+    actionButton(
+      'Clear Browsing Data',
+      async () => {
+        if (!checkboxState.history && !checkboxState.cache && !checkboxState.cookies) return;
+        await api.invoke('privacy:clearData', { ...checkboxState });
+        onCleared();
+      },
+      { danger: true, tooltip: 'Permanently deletes the selected data. This cannot be undone.' }
+    )
+  );
 
   return wrap;
 }
@@ -273,16 +305,16 @@ function buildHistorySection(state, api, onCleared) {
     }
   });
 
-  const clearBtn = document.createElement('button');
-  clearBtn.className = 'icon-btn danger-btn';
-  clearBtn.style.width = '100%';
-  clearBtn.textContent = 'Clear History';
-  clearBtn.dataset.tooltip = 'Deletes all saved browsing history.';
-  clearBtn.addEventListener('click', async () => {
-    await api.invoke('history:clear');
-    onCleared();
-  });
-  wrap.appendChild(clearBtn);
+  wrap.appendChild(
+    actionButton(
+      'Clear History',
+      async () => {
+        await api.invoke('history:clear');
+        onCleared();
+      },
+      { danger: true, tooltip: 'Deletes all saved browsing history.' }
+    )
+  );
 
   return wrap;
 }
@@ -344,13 +376,6 @@ function buildShortcutsSection() {
     wrap.appendChild(row);
   }
   return wrap;
-}
-
-function emptyRow(text) {
-  const row = document.createElement('div');
-  row.className = 'row';
-  row.textContent = text;
-  return row;
 }
 
 async function refreshExtensionList(extList, api, onRemoved) {

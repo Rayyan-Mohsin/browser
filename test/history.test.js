@@ -56,3 +56,36 @@ test('history persists across store instances', () => {
   const reloaded = new HistoryStore(file);
   assert.equal(reloaded.list().length, 1);
 });
+
+test('removeEntry deletes a single entry by id', () => {
+  const store = new HistoryStore(tmpFile());
+  store.add({ url: 'https://a.com', title: 'A' });
+  store.add({ url: 'https://b.com', title: 'B' });
+  const [newest] = store.list();
+  store.removeEntry(newest.id);
+  const remaining = store.list();
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0].url, 'https://a.com');
+});
+
+test('pruneOlderThan removes entries past the retention window', () => {
+  const store = new HistoryStore(tmpFile());
+  store.add({ url: 'https://old.com', title: 'Old' });
+  // Backdate the entry directly via the underlying store to simulate age.
+  const data = store.store.get();
+  data.entries[0].visitedAt = Date.now() - 10 * 24 * 60 * 60 * 1000; // 10 days ago
+  store.store.set({ entries: data.entries });
+  store.add({ url: 'https://new.com', title: 'New' });
+
+  store.pruneOlderThan(7);
+  const remaining = store.list();
+  assert.equal(remaining.length, 1);
+  assert.equal(remaining[0].url, 'https://new.com');
+});
+
+test('pruneOlderThan(null) is a no-op', () => {
+  const store = new HistoryStore(tmpFile());
+  store.add({ url: 'https://a.com', title: 'A' });
+  store.pruneOlderThan(null);
+  assert.equal(store.list().length, 1);
+});

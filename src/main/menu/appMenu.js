@@ -3,12 +3,20 @@
 const { Menu, app } = require('electron');
 
 /** Edit-role items are required for Cmd+C/V/X/A to work in any text input on macOS. */
-function buildAppMenu(tabManager) {
+function buildAppMenu(tabManager, { openPreferences } = {}) {
   const template = [
     {
       label: app.name,
       submenu: [
         { role: 'about' },
+        { type: 'separator' },
+        // A separate native window, deliberately not part of the in-app
+        // Settings popover -- see src/main/windows/preferencesWindow.js.
+        {
+          label: 'Advanced Settings…',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => openPreferences && openPreferences(),
+        },
         { type: 'separator' },
         { role: 'services' },
         { type: 'separator' },
@@ -22,7 +30,18 @@ function buildAppMenu(tabManager) {
     {
       label: 'File',
       submenu: [
-        { label: 'New Tab', accelerator: 'CmdOrCtrl+T', click: () => tabManager.createTab() },
+        {
+          label: 'New Tab',
+          accelerator: 'CmdOrCtrl+T',
+          // Opening a plain new tab from a private one stays private,
+          // matching how private/incognito windows behave in other browsers.
+          click: () => tabManager.createTab(undefined, { private: tabManager.isActiveTabPrivate() }),
+        },
+        {
+          label: 'New Private Tab',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => tabManager.createTab(undefined, { private: true }),
+        },
         {
           label: 'Close Tab',
           accelerator: 'CmdOrCtrl+W',

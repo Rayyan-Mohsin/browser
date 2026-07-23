@@ -10,6 +10,7 @@ const { registerHistoryHandlers } = require('./historyHandlers');
 const { registerDownloadsHandlers } = require('./downloadsHandlers');
 const { registerPrivacyHandlers } = require('./privacyHandlers');
 const { registerPageHandlers } = require('./pageHandlers');
+const { registerAdvancedHandlers } = require('./advancedHandlers');
 
 function registerIpcHandlers({
   tabManager,
@@ -32,6 +33,7 @@ function registerIpcHandlers({
   registerDownloadsHandlers(downloadManager);
   registerPrivacyHandlers(session, historyStore);
   registerPageHandlers(win);
+  registerAdvancedHandlers(settingsStore, historyStore);
   return { theme };
 }
 

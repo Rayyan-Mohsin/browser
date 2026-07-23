@@ -53,6 +53,11 @@ export function renderCompactToolbar(el, state, api) {
  * editable address field (favicon, URL input, share/star/close), while
  * inactive tabs stay as small favicon+title pills.
  */
+// Persists across renders for the same reason as tabBar.js's seenTabIds:
+// the strip fully rebuilds every render, so "is this new" can't be
+// determined from the DOM alone.
+const seenTabIds = new Set();
+
 export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChange, onShare }) {
   // The whole strip is rebuilt on every render (fired on background events
   // like favicon/title updates for any tab), which would otherwise wipe out
@@ -71,10 +76,20 @@ export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChan
   for (const tab of state.tabs) {
     const isActive = tab.id === state.activeId;
     const pill = document.createElement('div');
-    pill.className = 'compact-pill' + (isActive ? ' active' : '');
+    pill.className =
+      'compact-pill' +
+      (isActive ? ' active' : '') +
+      (tab.isPrivate ? ' private' : '') +
+      (seenTabIds.has(tab.id) ? '' : ' compact-pill-entering');
     pill.dataset.tabId = tab.id;
 
-    if (tab.favicon) {
+    if (tab.isPrivate) {
+      const badge = document.createElement('span');
+      badge.className = 'private-dot';
+      badge.dataset.tooltip = 'This tab is private: history and cookies aren’t saved.';
+      badge.textContent = '🕶️';
+      pill.appendChild(badge);
+    } else if (tab.favicon) {
       const img = document.createElement('img');
       img.className = 'favicon';
       img.src = tab.favicon;
@@ -163,6 +178,11 @@ export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChan
     });
 
     el.appendChild(pill);
+  }
+
+  for (const tab of state.tabs) seenTabIds.add(tab.id);
+  for (const id of seenTabIds) {
+    if (!state.tabs.some((t) => t.id === id)) seenTabIds.delete(id);
   }
 
   const addBtn = document.createElement('button');
