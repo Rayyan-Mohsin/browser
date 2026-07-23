@@ -1,0 +1,18 @@
+{
+  "name": "browser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight, modern Chromium-based browser for Apple Silicon Macs.",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "postinstall": "electron-builder install-app-deps",
+    "build": "electron-builder --mac --arm64 --config electron-builder.yml",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

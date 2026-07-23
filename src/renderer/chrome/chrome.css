@@ -1,0 +1,150 @@
+#chrome-root {
+  display: flex;
+  flex-direction: column;
+  height: var(--header-height);
+  background: var(--bg-chrome);
+  -webkit-app-region: drag;
+  position: relative;
+}
+
+.titlebar-spacer {
+  height: 22px; /* keeps controls clear of the traffic lights */
+  flex-shrink: 0;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  flex-shrink: 0;
+}
+
+#toolbar, #address-bar, #settings-toggle, .tab-bar-row, .bookmarks-bar-row {
+  -webkit-app-region: no-drag;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.icon-btn:hover { background: var(--hover-bg); }
+.icon-btn:disabled { opacity: 0.35; cursor: default; }
+.icon-btn:disabled:hover { background: transparent; }
+
+#toolbar { display: flex; gap: 2px; }
+
+#address-bar { flex: 1; display: flex; align-items: center; gap: 6px; }
+#address-bar input {
+  flex: 1;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+:root[data-theme='dark'] #address-bar input { background: rgba(255, 255, 255, 0.08); }
+#address-bar input:focus { border-color: var(--accent); }
+
+.tab-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.tab-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+  min-width: 120px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius-tab);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.tab-pill.active { background: var(--hover-bg); color: var(--text-primary); }
+.tab-pill:hover { background: var(--hover-bg); }
+.tab-pill .favicon { width: 14px; height: 14px; flex-shrink: 0; border-radius: 2px; }
+.tab-pill .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-pill .close {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tab-pill .close:hover { background: rgba(0, 0, 0, 0.15); }
+.tab-add { width: 24px; height: 24px; flex-shrink: 0; }
+
+.bookmarks-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px 6px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.bookmarks-bar-row.hidden { display: none; }
+.bookmark-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bookmark-chip:hover { background: var(--hover-bg); }
+
+.settings-panel {
+  position: absolute;
+  top: 60px;
+  right: 12px;
+  width: 280px;
+  background: var(--bg-chrome);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.settings-panel.hidden { display: none; }
+.settings-panel h3 {
+  margin: 12px 0 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.settings-panel h3:first-child { margin-top: 0; }
+.settings-panel .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.hidden { display: none; }

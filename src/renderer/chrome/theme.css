@@ -1,0 +1,34 @@
+:root {
+  --header-height: 84px; /* keep in sync with HEADER_HEIGHT in src/shared/layout.js */
+  --bg-chrome: rgba(255, 255, 255, 0.6);
+  --text-primary: #1a1a1a;
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --accent: #0a84ff;
+  --border: rgba(0, 0, 0, 0.08);
+  --radius-tab: 8px;
+  --radius-control: 6px;
+  --hover-bg: rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme='dark'] {
+  --bg-chrome: rgba(30, 30, 30, 0.6);
+  --text-primary: #f5f5f5;
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --border: rgba(255, 255, 255, 0.08);
+  --hover-bg: rgba(255, 255, 255, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent; /* required for window vibrancy to show through */
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  color: var(--text-primary);
+  -webkit-user-select: none;
+  user-select: none;
+}
