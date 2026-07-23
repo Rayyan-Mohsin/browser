@@ -37,6 +37,25 @@ function isNewTabUrl(url) {
 }
 
 /**
+ * The chrome view spans the *entire* window, but the active tab's own
+ * native view is layered on top of it for everything below the header --
+ * so any chrome-view overlay that isn't confined to the header (the
+ * settings panel, this text-prompt modal) is invisible unless the active
+ * tab's view is detached first. Reference-counted so the settings panel and
+ * the modal can't stomp on each other if one is somehow triggered while the
+ * other is already open.
+ */
+let overlayOpenCount = 0;
+function pushOverlayOpen() {
+  overlayOpenCount += 1;
+  if (overlayOpenCount === 1) api.invoke('ui:setOverlayOpen', { open: true });
+}
+function popOverlayOpen() {
+  overlayOpenCount = Math.max(0, overlayOpenCount - 1);
+  if (overlayOpenCount === 0) api.invoke('ui:setOverlayOpen', { open: false });
+}
+
+/**
  * Electron doesn't implement window.prompt() (unlike alert()/confirm(),
  * which it does show as native dialogs) -- calling it silently no-ops. This
  * is the app's own equivalent, backed by the hidden #text-prompt-modal in
@@ -52,12 +71,14 @@ function promptText(title, defaultValue) {
   titleEl.textContent = title;
   input.value = defaultValue || '';
   overlay.classList.remove('hidden');
+  pushOverlayOpen();
   input.focus();
   input.select();
 
   return new Promise((resolve) => {
     const cleanup = (result) => {
       overlay.classList.add('hidden');
+      popOverlayOpen();
       input.onkeydown = null;
       okBtn.onclick = null;
       cancelBtn.onclick = null;
@@ -83,13 +104,13 @@ function isCompactLayout() {
 function render() {
   if (isCompactLayout()) {
     renderCompactToolbar(document.getElementById('compact-toolbar'), state, api);
-    renderCompactTabStrip(document.getElementById('compact-tab-strip'), state, api, {
+    renderCompactTabStrip(document.getElementById('compact-tab-track'), state, api, {
       onChange: refreshTabs,
       onBookmarkChange: refreshBookmarks,
       onShare: shareTab,
     });
   } else {
-    renderTabBar(document.getElementById('tab-bar'), state, api, { onChange: refreshTabs });
+    renderTabBar(document.getElementById('tab-bar-track'), state, api, { onChange: refreshTabs });
     renderAddressBar(document.getElementById('address-bar'), state, api, {
       onBookmarkChange: refreshBookmarks,
       onShare: shareTab,
@@ -178,7 +199,7 @@ async function init() {
 
   const openSettingsPanel = () => {
     settingsPanel.classList.add('open');
-    api.invoke('ui:setOverlayOpen', { open: true });
+    pushOverlayOpen();
     renderSettingsPanel(settingsPanel, state, api, {
       onSettingsChange: async () => {
         state.settings = await api.invoke('settings:get');
@@ -189,7 +210,7 @@ async function init() {
   };
   const closeSettingsPanel = () => {
     settingsPanel.classList.remove('open');
-    api.invoke('ui:setOverlayOpen', { open: false });
+    popOverlayOpen();
   };
 
   settingsToggles.forEach((btn) => {
@@ -204,6 +225,16 @@ async function init() {
     if ([...settingsToggles].some((btn) => btn.contains(e.target))) return;
     closeSettingsPanel();
   });
+
+  // Static "+" buttons: kept out of tabBar.js/compactBar.js's render loop
+  // entirely (they live in index.html, not in the scrollable/shrinkable
+  // pill track) so their position never shifts as tabs are added or shrink.
+  const createNewTab = async () => {
+    await api.invoke('tabs:create', {});
+    await refreshTabs();
+  };
+  document.getElementById('tab-add-btn').addEventListener('click', createNewTab);
+  document.getElementById('compact-add-btn').addEventListener('click', createNewTab);
 
   render();
   initTooltips(document.body);

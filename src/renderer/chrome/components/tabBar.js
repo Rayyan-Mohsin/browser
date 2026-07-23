@@ -195,17 +195,4 @@ export function renderTabBar(el, state, api, { onChange }) {
   // Whatever's left in `existing`/`existingChips` belongs to closed tabs/groups.
   for (const stalePill of existing.values()) stalePill.remove();
   for (const staleChip of existingChips.values()) staleChip.remove();
-
-  let addBtn = el.querySelector('.tab-add');
-  if (!addBtn) {
-    addBtn = document.createElement('button');
-    addBtn.className = 'icon-btn tab-add';
-    addBtn.textContent = '+';
-    addBtn.title = 'New Tab';
-    addBtn.addEventListener('click', async () => {
-      await api.invoke('tabs:create', {});
-      onChange();
-    });
-  }
-  el.appendChild(addBtn); // appendChild re-appending an existing node just moves it — keeps it last
 }

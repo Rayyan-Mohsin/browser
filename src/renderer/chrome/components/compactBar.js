@@ -329,17 +329,4 @@ export function renderCompactTabStrip(el, state, api, callbacks) {
 
   for (const stalePill of existing.values()) stalePill.remove();
   for (const staleChip of existingChips.values()) staleChip.remove();
-
-  let addBtn = el.querySelector('.compact-add');
-  if (!addBtn) {
-    addBtn = document.createElement('button');
-    addBtn.className = 'icon-btn compact-add';
-    addBtn.textContent = '+';
-    addBtn.dataset.tooltip = 'New Tab';
-    addBtn.addEventListener('click', async () => {
-      await api.invoke('tabs:create', {});
-      callbacks.onChange();
-    });
-  }
-  el.appendChild(addBtn);
 }

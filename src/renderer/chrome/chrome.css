@@ -41,6 +41,17 @@
   min-width: 0;
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+/* The scrollable/shrinkable pill area is a separate element from the "+"
+   button (a fixed flex sibling right after it), so the button's position
+   never shifts as tabs are added/removed or shrink to fit. */
+.compact-tab-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
   gap: 5px;
   overflow-x: auto;
   /* Scrolling itself stays functional (trackpad/wheel) -- only the visible
@@ -50,7 +61,7 @@
      transiently wider than its box, flashing a scrollbar for one frame. */
   scrollbar-width: none;
 }
-.compact-tab-strip::-webkit-scrollbar { display: none; }
+.compact-tab-track::-webkit-scrollbar { display: none; }
 
 .compact-pill {
   display: flex;
@@ -63,7 +74,12 @@
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
-  flex-shrink: 0;
+  /* Shrinks (rather than forcing the strip to scroll) once there are too
+     many tabs to show at full size -- only this small, favicon-sized floor
+     forces a scrollbar. Content still hugs its natural width up to
+     max-width when there's room -- no flex-basis override. */
+  flex-shrink: 1;
+  min-width: 46px;
   max-width: 180px;
   transition: background-color 120ms ease, color 120ms ease;
 }
@@ -71,9 +87,9 @@
 .compact-pill .favicon { width: 15px; height: 15px; flex-shrink: 0; border-radius: 2px; }
 .compact-pill .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .compact-pill.active {
-  flex: 1 1 auto;
+  flex: 1 1 160px;
   max-width: none;
-  min-width: 180px;
+  min-width: 160px;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid var(--border);
   color: var(--text-primary);
@@ -196,18 +212,38 @@
 .tab-bar-row {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   padding: 0 9px 7px;
-  overflow-x: auto;
   flex-shrink: 0;
 }
+
+/* The scrollable/shrinkable pill area is a separate element from the "+"
+   button (a fixed flex sibling right after it), so the button's position
+   never shifts as tabs are added/removed or shrink to fit. */
+.tab-bar-track {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-bar-track::-webkit-scrollbar { display: none; }
 
 .tab-pill {
   display: flex;
   align-items: center;
   gap: 7px;
+  /* Shrinks (rather than forcing the strip to scroll) once there are too
+     many tabs to show at full size -- only this small, favicon-sized floor
+     forces a scrollbar. flex-shrink defaults to 1 already; stated explicitly
+     since it's load-bearing here. Content still hugs its natural width up to
+     max-width when there's room -- no flex-basis override, so pills aren't
+     forced to render at max width by default. */
+  flex-shrink: 1;
+  min-width: 56px;
   max-width: 230px;
-  min-width: 138px;
   height: 32px;
   padding: 0 9px;
   border-radius: var(--radius-tab);

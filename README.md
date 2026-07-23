@@ -96,6 +96,10 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
 - **Tab bar layout**: Settings → Tab Bar lets you pick **Separate** (default:
   tabs and the address bar in two rows) or **Compact** (Safari-style: they
   merge into one row and the active tab becomes the editable address field).
+  In both layouts, tabs stay full size until there are too many to fit, then
+  shrink to make room (rather than forcing horizontal scrolling); the "+"
+  new-tab button sits in a fixed spot next to the (separately scrollable)
+  tab strip, so it never moves as tabs are added or shrink.
 - **Tab groups**: right-click any tab → "New Group from Tab" / "Add to
   Group" / "Rename Group…" / "Remove from Group". Colors are assigned
   automatically from a small fixed palette; grouped tabs get a thin colored
