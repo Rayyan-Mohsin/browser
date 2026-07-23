@@ -38,6 +38,10 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(buildAppMenu(tabManager));
 
   tabManager.createTab();
+}).catch((err) => {
+  // Without this, a thrown error here silently leaves the app running with
+  // no window and no visible diagnostic.
+  console.error('Failed to initialize app:', err);
 });
 
 app.on('window-all-closed', () => {

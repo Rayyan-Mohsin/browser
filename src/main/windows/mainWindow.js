@@ -38,7 +38,16 @@ function createMainWindow() {
 
   chromeView.webContents.loadFile(path.join(__dirname, '../../renderer/chrome/index.html'));
 
-  win.once('ready-to-show', () => win.show());
+  // `ready-to-show` fires on the *window's own* webContents, which we never
+  // navigate (all UI lives in chromeView's webContents instead) — so it
+  // would never fire here. Reveal once the chrome view actually has content,
+  // with a fail-safe timeout so a load error never leaves the app invisible.
+  const showWindow = () => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  };
+  chromeView.webContents.once('did-finish-load', showWindow);
+  chromeView.webContents.once('did-fail-load', showWindow);
+  setTimeout(showWindow, 3000);
 
   return { win, chromeView };
 }
