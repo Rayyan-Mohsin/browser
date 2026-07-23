@@ -1,12 +1,15 @@
 :root {
-  --header-height: 84px; /* keep in sync with HEADER_HEIGHT in src/shared/layout.js */
+  /* The header has no fixed height: it sizes to its own content, and
+     chrome.js measures + reports the real rendered height to the main
+     process (see ui:setHeaderHeight) so the active tab's view is always
+     positioned exactly below it, however tall that content is. */
   --bg-chrome: rgba(255, 255, 255, 0.6);
   --text-primary: #1a1a1a;
   --text-secondary: rgba(0, 0, 0, 0.55);
   --accent: #0a84ff;
   --border: rgba(0, 0, 0, 0.08);
-  --radius-tab: 8px;
-  --radius-control: 6px;
+  --radius-tab: 9px;
+  --radius-control: 7px;
   --hover-bg: rgba(0, 0, 0, 0.06);
 }
 

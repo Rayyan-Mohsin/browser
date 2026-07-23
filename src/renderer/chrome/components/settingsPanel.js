@@ -24,6 +24,26 @@ export function renderSettingsPanel(el, state, api, { onSettingsChange }) {
   }
   el.appendChild(modeRow);
 
+  el.appendChild(heading('Tabs'));
+  const tabStyleRow = document.createElement('div');
+  tabStyleRow.className = 'row';
+  for (const style of ['normal', 'compact']) {
+    const label = document.createElement('label');
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'tab-style';
+    radio.value = style;
+    radio.checked = (settings.tabStyle || 'normal') === style;
+    radio.addEventListener('change', async () => {
+      await api.invoke('settings:set', { tabStyle: style });
+      onSettingsChange();
+    });
+    label.appendChild(radio);
+    label.append(` ${style[0].toUpperCase()}${style.slice(1)}`);
+    tabStyleRow.appendChild(label);
+  }
+  el.appendChild(tabStyleRow);
+
   el.appendChild(heading('Bookmarks'));
   const bmRow = document.createElement('div');
   bmRow.className = 'row';

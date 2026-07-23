@@ -18,6 +18,11 @@ class TabManager {
     this.tabs = new Map();
     this.order = [];
     this.activeId = null;
+    // Fallback used only until the chrome renderer reports its real
+    // measured height (its content size can vary with font/zoom/tab-style
+    // settings, so a hardcoded constant can't be kept reliably in sync).
+    this.headerHeight = HEADER_HEIGHT;
+    this.overlayOpen = false;
   }
 
   list() {
@@ -94,7 +99,7 @@ class TabManager {
       if (prev) this.win.contentView.removeChildView(prev.view);
     }
     this.activeId = id;
-    this.win.contentView.addChildView(tab.view);
+    if (!this.overlayOpen) this.win.contentView.addChildView(tab.view);
     this.resizeActiveView();
     this.onActiveChanged(id);
     this._emitUpdate();
@@ -160,10 +165,35 @@ class TabManager {
     const [width, height] = this.win.getContentSize();
     tab.view.setBounds({
       x: 0,
-      y: HEADER_HEIGHT,
+      y: this.headerHeight,
       width,
-      height: Math.max(0, height - HEADER_HEIGHT),
+      height: Math.max(0, height - this.headerHeight),
     });
+  }
+
+  /** Called by the chrome renderer once it measures its own real rendered height. */
+  setHeaderHeight(height) {
+    if (typeof height !== 'number' || !Number.isFinite(height) || height <= 0) return;
+    this.headerHeight = height;
+    this.resizeActiveView();
+  }
+
+  /**
+   * While a chrome-view overlay (e.g. the settings panel) is open, detach the
+   * active tab's view entirely so it can never cover a popover that extends
+   * below the header's own bounds.
+   */
+  setOverlayOpen(open) {
+    this.overlayOpen = !!open;
+    if (!this.activeId) return;
+    const tab = this.tabs.get(this.activeId);
+    if (!tab) return;
+    if (this.overlayOpen) {
+      this.win.contentView.removeChildView(tab.view);
+    } else {
+      this.win.contentView.addChildView(tab.view);
+      this.resizeActiveView();
+    }
   }
 }
 

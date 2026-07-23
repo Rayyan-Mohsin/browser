@@ -39,12 +39,28 @@ function applyTheme({ effective, custom }) {
   }
 }
 
+function applyTabStyle() {
+  document.documentElement.dataset.tabStyle = (state.settings && state.settings.tabStyle) || 'normal';
+}
+
+/**
+ * The tab view's y-offset/height in the main process is derived from this
+ * measurement, not a hardcoded constant, so any change here (button sizing,
+ * compact tabs, bookmarks bar toggle) automatically keeps the page content
+ * from ever overlapping the header.
+ */
+function reportHeaderHeight(chromeRoot) {
+  const height = Math.ceil(chromeRoot.getBoundingClientRect().height);
+  if (height > 0) api.invoke('ui:setHeaderHeight', { height });
+}
+
 async function init() {
   state.settings = await api.invoke('settings:get');
   await refreshTabs();
   await refreshBookmarks();
   if (state.tabs.length > 0) state.activeId = state.tabs[state.tabs.length - 1].id;
 
+  applyTabStyle();
   applyTheme(await api.invoke('theme:get'));
 
   api.on('tabs:updated', (tabs) => {
@@ -59,19 +75,38 @@ async function init() {
 
   const settingsToggle = document.getElementById('settings-toggle');
   const settingsPanel = document.getElementById('settings-panel');
+
+  const openSettingsPanel = () => {
+    settingsPanel.classList.remove('hidden');
+    api.invoke('ui:setOverlayOpen', { open: true });
+    renderSettingsPanel(settingsPanel, state, api, {
+      onSettingsChange: async () => {
+        state.settings = await api.invoke('settings:get');
+        applyTabStyle();
+        render();
+      },
+    });
+  };
+  const closeSettingsPanel = () => {
+    settingsPanel.classList.add('hidden');
+    api.invoke('ui:setOverlayOpen', { open: false });
+  };
+
   settingsToggle.addEventListener('click', () => {
-    settingsPanel.classList.toggle('hidden');
-    if (!settingsPanel.classList.contains('hidden')) {
-      renderSettingsPanel(settingsPanel, state, api, {
-        onSettingsChange: async () => {
-          state.settings = await api.invoke('settings:get');
-          render();
-        },
-      });
-    }
+    if (settingsPanel.classList.contains('hidden')) openSettingsPanel();
+    else closeSettingsPanel();
+  });
+  document.addEventListener('click', (e) => {
+    if (settingsPanel.classList.contains('hidden')) return;
+    if (settingsPanel.contains(e.target) || settingsToggle.contains(e.target)) return;
+    closeSettingsPanel();
   });
 
   render();
+
+  const chromeRoot = document.getElementById('chrome-root');
+  reportHeaderHeight(chromeRoot);
+  new ResizeObserver(() => reportHeaderHeight(chromeRoot)).observe(chromeRoot);
 }
 
 init();

@@ -9,6 +9,7 @@ const INVOKE_CHANNELS = new Set([
   'settings:get', 'settings:set',
   'theme:get', 'theme:set',
   'extensions:openLoadDialog', 'extensions:load', 'extensions:list', 'extensions:remove',
+  'ui:setHeaderHeight', 'ui:setOverlayOpen',
 ]);
 
 const EVENT_CHANNELS = new Set(['tabs:updated', 'tabs:active-changed', 'theme:changed']);

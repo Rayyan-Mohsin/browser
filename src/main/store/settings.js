@@ -9,6 +9,7 @@ const DEFAULTS = {
   window: { width: 1280, height: 800, x: null, y: null },
   showBookmarksBar: true,
   searchEngine: DEFAULT_SEARCH_ENGINE,
+  tabStyle: 'normal', // 'normal' | 'compact'
   extensions: [],
 };
 

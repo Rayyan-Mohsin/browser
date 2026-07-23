@@ -55,6 +55,14 @@ function buildAppMenu(tabManager) {
           },
         },
         { type: 'separator' },
+        // Built-in roles: Electron/Chromium handle the Cmd/Ctrl+=/-/0
+        // accelerators (including the shifted "+" key) and target
+        // whichever WebContents currently has focus, which correctly
+        // reaches the active tab's page.
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
         { role: 'togglefullscreen' },
       ],
     },
