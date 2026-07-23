@@ -7,6 +7,20 @@
 // bookmarks bar visibility), so it is not hardcoded anywhere else.
 const HEADER_HEIGHT = 104;
 
-const DEFAULT_SEARCH_ENGINE = 'https://www.google.com/search?q=%s';
+// Preset search engines offered in Settings. 'custom' is handled separately
+// (the user supplies their own %s template), so it isn't listed here.
+const SEARCH_ENGINES = {
+  google: { label: 'Google', template: 'https://www.google.com/search?q=%s' },
+  bing: { label: 'Bing', template: 'https://www.bing.com/search?q=%s' },
+  duckduckgo: { label: 'DuckDuckGo', template: 'https://duckduckgo.com/?q=%s' },
+};
 
-module.exports = { HEADER_HEIGHT, DEFAULT_SEARCH_ENGINE };
+const DEFAULT_SEARCH_ENGINE_ID = 'google';
+const DEFAULT_SEARCH_ENGINE = SEARCH_ENGINES[DEFAULT_SEARCH_ENGINE_ID].template;
+
+module.exports = {
+  HEADER_HEIGHT,
+  SEARCH_ENGINES,
+  DEFAULT_SEARCH_ENGINE_ID,
+  DEFAULT_SEARCH_ENGINE,
+};

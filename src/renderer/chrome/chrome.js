@@ -1,8 +1,10 @@
 import { renderToolbar } from './components/toolbar.js';
 import { renderAddressBar } from './components/addressBar.js';
 import { renderTabBar } from './components/tabBar.js';
+import { renderCompactToolbar, renderCompactTabStrip } from './components/compactBar.js';
 import { renderBookmarksBar } from './components/bookmarksBar.js';
 import { renderSettingsPanel } from './components/settingsPanel.js';
+import { initTooltips } from './components/tooltip.js';
 
 const api = window.browserAPI;
 
@@ -23,11 +25,40 @@ async function refreshBookmarks() {
   render();
 }
 
+async function shareTab(tab) {
+  const result = await api.invoke('page:share', { url: tab.url, title: tab.title || tab.url });
+  if (result && result.error) {
+    alert(`Couldn't open the share menu: ${result.error}`);
+  }
+}
+
+function isCompactLayout() {
+  return ((state.settings && state.settings.tabBarLayout) || 'separate') === 'compact';
+}
+
 function render() {
-  renderTabBar(document.getElementById('tab-bar'), state, api, { onChange: refreshTabs });
-  renderAddressBar(document.getElementById('address-bar'), state, api, { onBookmarkChange: refreshBookmarks });
-  renderToolbar(document.getElementById('toolbar'), state, api);
+  if (isCompactLayout()) {
+    renderCompactToolbar(document.getElementById('compact-toolbar'), state, api);
+    renderCompactTabStrip(document.getElementById('compact-tab-strip'), state, api, {
+      onChange: refreshTabs,
+      onBookmarkChange: refreshBookmarks,
+      onShare: shareTab,
+    });
+  } else {
+    renderTabBar(document.getElementById('tab-bar'), state, api, { onChange: refreshTabs });
+    renderAddressBar(document.getElementById('address-bar'), state, api, {
+      onBookmarkChange: refreshBookmarks,
+      onShare: shareTab,
+    });
+    renderToolbar(document.getElementById('toolbar'), state, api);
+  }
   renderBookmarksBar(document.getElementById('bookmarks-bar'), state, api);
+  updateLoadingBar();
+}
+
+function updateLoadingBar() {
+  const tab = state.tabs.find((t) => t.id === state.activeId);
+  document.getElementById('loading-bar').classList.toggle('active', !!tab && tab.isLoading);
 }
 
 function applyTheme({ effective, custom }) {
@@ -39,14 +70,14 @@ function applyTheme({ effective, custom }) {
   }
 }
 
-function applyTabStyle() {
-  document.documentElement.dataset.tabStyle = (state.settings && state.settings.tabStyle) || 'normal';
+function applyTabBarLayout() {
+  document.documentElement.dataset.tabBarLayout = (state.settings && state.settings.tabBarLayout) || 'separate';
 }
 
 /**
  * The tab view's y-offset/height in the main process is derived from this
  * measurement, not a hardcoded constant, so any change here (button sizing,
- * compact tabs, bookmarks bar toggle) automatically keeps the page content
+ * tab bar layout, bookmarks bar toggle) automatically keeps the page content
  * from ever overlapping the header.
  */
 function reportHeaderHeight(chromeRoot) {
@@ -60,7 +91,7 @@ async function init() {
   await refreshBookmarks();
   if (state.tabs.length > 0) state.activeId = state.tabs[state.tabs.length - 1].id;
 
-  applyTabStyle();
+  applyTabBarLayout();
   applyTheme(await api.invoke('theme:get'));
 
   api.on('tabs:updated', (tabs) => {
@@ -73,36 +104,40 @@ async function init() {
   });
   api.on('theme:changed', applyTheme);
 
-  const settingsToggle = document.getElementById('settings-toggle');
+  const settingsToggles = document.querySelectorAll('.settings-toggle-btn');
   const settingsPanel = document.getElementById('settings-panel');
 
   const openSettingsPanel = () => {
-    settingsPanel.classList.remove('hidden');
+    settingsPanel.classList.add('open');
     api.invoke('ui:setOverlayOpen', { open: true });
     renderSettingsPanel(settingsPanel, state, api, {
       onSettingsChange: async () => {
         state.settings = await api.invoke('settings:get');
-        applyTabStyle();
+        applyTabBarLayout();
         render();
       },
     });
   };
   const closeSettingsPanel = () => {
-    settingsPanel.classList.add('hidden');
+    settingsPanel.classList.remove('open');
     api.invoke('ui:setOverlayOpen', { open: false });
   };
 
-  settingsToggle.addEventListener('click', () => {
-    if (settingsPanel.classList.contains('hidden')) openSettingsPanel();
-    else closeSettingsPanel();
+  settingsToggles.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (settingsPanel.classList.contains('open')) closeSettingsPanel();
+      else openSettingsPanel();
+    });
   });
   document.addEventListener('click', (e) => {
-    if (settingsPanel.classList.contains('hidden')) return;
-    if (settingsPanel.contains(e.target) || settingsToggle.contains(e.target)) return;
+    if (!settingsPanel.classList.contains('open')) return;
+    if (settingsPanel.contains(e.target)) return;
+    if ([...settingsToggles].some((btn) => btn.contains(e.target))) return;
     closeSettingsPanel();
   });
 
   render();
+  initTooltips(document.body);
 
   const chromeRoot = document.getElementById('chrome-root');
   reportHeaderHeight(chromeRoot);

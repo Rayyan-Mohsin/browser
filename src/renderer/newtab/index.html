@@ -46,14 +46,20 @@
   <div class="wrap">
     <div class="wordmark">Browser</div>
     <form id="search-form">
-      <input id="search-input" type="text" placeholder="Search Google or type a URL" autofocus autocomplete="off" spellcheck="false" />
+      <input id="search-input" type="text" placeholder="Search or type a URL" autofocus autocomplete="off" spellcheck="false" />
     </form>
   </div>
   <script>
     // Deliberately self-contained (no preload/IPC): this page is loaded via
     // file:// and kept dependency-free like any other tab content, rather
     // than granted privileged access. It duplicates a minimal version of
-    // the URL-vs-search heuristic in src/main/tabs/urlNormalize.js.
+    // the URL-vs-search heuristic in src/main/tabs/urlNormalize.js. The
+    // active search engine's %s template is passed in via a query param
+    // (set by TabManager.buildNewTabUrl) so this stays in sync with the
+    // user's Settings choice without needing IPC.
+    const params = new URLSearchParams(window.location.search);
+    const engineTemplate = params.get('engine') || 'https://www.google.com/search?q=%s';
+
     document.getElementById('search-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const input = document.getElementById('search-input').value.trim();
@@ -67,7 +73,7 @@
       let target;
       if (urlLike) target = input;
       else if (!hasSpace && (bareHost || localhost)) target = `https://${input}`;
-      else target = `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+      else target = engineTemplate.replace('%s', encodeURIComponent(input));
 
       window.location.href = target;
     });

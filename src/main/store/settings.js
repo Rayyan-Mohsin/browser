@@ -1,15 +1,17 @@
 'use strict';
 
 const { Store } = require('./Store');
-const { DEFAULT_SEARCH_ENGINE } = require('../../shared/layout');
+const { DEFAULT_SEARCH_ENGINE, DEFAULT_SEARCH_ENGINE_ID } = require('../../shared/layout');
 
 const DEFAULTS = {
   version: 1,
   theme: { mode: 'system', custom: null },
   window: { width: 1280, height: 800, x: null, y: null },
   showBookmarksBar: true,
-  searchEngine: DEFAULT_SEARCH_ENGINE,
-  tabStyle: 'normal', // 'normal' | 'compact'
+  searchEngineId: DEFAULT_SEARCH_ENGINE_ID, // 'google' | 'bing' | 'duckduckgo' | 'custom'
+  searchEngine: DEFAULT_SEARCH_ENGINE, // resolved %s template, used directly by urlNormalize
+  customSearchEngine: '', // user's own %s template, used when searchEngineId is 'custom'
+  tabBarLayout: 'separate', // 'separate' | 'compact' (Safari-style)
   extensions: [],
 };
 

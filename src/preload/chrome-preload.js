@@ -6,10 +6,14 @@ const INVOKE_CHANNELS = new Set([
   'tabs:create', 'tabs:close', 'tabs:switch', 'tabs:list', 'tabs:navigate',
   'tabs:reload', 'tabs:stop', 'tabs:goBack', 'tabs:goForward',
   'bookmarks:add', 'bookmarks:remove', 'bookmarks:update', 'bookmarks:list', 'bookmarks:createFolder',
-  'settings:get', 'settings:set',
+  'settings:get', 'settings:set', 'settings:setSearchEngine',
   'theme:get', 'theme:set',
   'extensions:openLoadDialog', 'extensions:load', 'extensions:list', 'extensions:remove',
   'ui:setHeaderHeight', 'ui:setOverlayOpen',
+  'history:list', 'history:clear',
+  'downloads:list', 'downloads:openFile', 'downloads:showInFolder',
+  'privacy:clearData',
+  'page:share',
 ]);
 
 const EVENT_CHANNELS = new Set(['tabs:updated', 'tabs:active-changed', 'theme:changed']);

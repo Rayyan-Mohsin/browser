@@ -6,21 +6,28 @@ const { WebContentsView } = require('electron');
 const { HEADER_HEIGHT } = require('../../shared/layout');
 const { normalizeInput } = require('./urlNormalize');
 
-const NEW_TAB_URL = `file://${path.join(__dirname, '../../renderer/newtab/index.html')}`;
+const NEW_TAB_BASE_URL = `file://${path.join(__dirname, '../../renderer/newtab/index.html')}`;
+
+/** New-tab search box respects the user's configured engine via a query param (it has no IPC access). */
+function buildNewTabUrl(searchEngineTemplate) {
+  return `${NEW_TAB_BASE_URL}?engine=${encodeURIComponent(searchEngineTemplate)}`;
+}
 
 /** Manages one WebContentsView per tab, attaching only the active one below the chrome header. */
 class TabManager {
-  constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged }) {
+  constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged, onNavigate }) {
     this.win = win;
     this.getSearchEngine = getSearchEngine;
     this.onTabsUpdated = onTabsUpdated || (() => {});
     this.onActiveChanged = onActiveChanged || (() => {});
+    this.onNavigate = onNavigate || (() => {});
     this.tabs = new Map();
     this.order = [];
     this.activeId = null;
     // Fallback used only until the chrome renderer reports its real
-    // measured height (its content size can vary with font/zoom/tab-style
-    // settings, so a hardcoded constant can't be kept reliably in sync).
+    // measured height (its content size can vary with font size, zoom, or
+    // the tab bar layout setting, so a hardcoded constant can't be kept
+    // reliably in sync).
     this.headerHeight = HEADER_HEIGHT;
     this.overlayOpen = false;
   }
@@ -59,7 +66,7 @@ class TabManager {
     const tab = {
       id,
       view,
-      state: { url: url || NEW_TAB_URL, title: 'New Tab', favicon: null },
+      state: { url: url || buildNewTabUrl(this.getSearchEngine()), title: 'New Tab', favicon: null },
     };
     this.tabs.set(id, tab);
     this.order.push(id);
@@ -76,6 +83,10 @@ class TabManager {
     wc.on('did-navigate', (_e, navUrl) => {
       tab.state.url = navUrl;
       this._emitUpdate();
+      // Exclude our own local pages (currently just the new-tab page) from history.
+      if (!navUrl.startsWith('file://')) {
+        this.onNavigate({ url: navUrl, title: tab.state.title, favicon: tab.state.favicon });
+      }
     });
     wc.on('did-navigate-in-page', (_e, navUrl) => {
       tab.state.url = navUrl;
@@ -197,4 +208,4 @@ class TabManager {
   }
 }
 
-module.exports = { TabManager, NEW_TAB_URL };
+module.exports = { TabManager, buildNewTabUrl };

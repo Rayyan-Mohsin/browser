@@ -91,14 +91,36 @@ generate it from a 1024x1024 PNG.
 
 - **Tabs**: each tab is its own Chromium `WebContentsView`; only the active
   tab is attached below the always-visible header, so switching tabs
-  preserves each page's live state.
-- **Bookmarks**: add/remove via the star icon in the address bar, browse via
-  the bookmarks bar (toggle in Settings), stored in
+  preserves each page's live state. The header's real height is measured
+  live by the renderer and reported to the main process (not hardcoded),
+  so button sizing, tab bar layout, and the bookmarks bar can all change
+  without ever letting page content overlap the header.
+- **Tab bar layout**: Settings → Tab Bar lets you pick **Separate** (default:
+  tabs and the address bar in two rows) or **Compact** (Safari-style: they
+  merge into one row and the active tab becomes the editable address field).
+- **Bookmarks**: add/remove via the star icon, browse via the bookmarks bar
+  (toggle in Settings), stored in
   `~/Library/Application Support/Browser/bookmarks.json`.
+- **History**: every visited page is recorded (Settings → History); click an
+  entry to revisit it, or clear it entirely. Stored in `history.json`
+  alongside bookmarks/settings.
+- **Downloads**: files save automatically to `~/Downloads` (auto-renamed on
+  collision, no per-file dialog); Settings → Downloads lists recent
+  downloads with Open/Show-in-Finder actions.
+- **Share**: the share icon next to the address bar (or inside the active
+  tab in Compact layout) opens the real macOS share sheet via Electron's
+  native `ShareMenu`.
+- **Search engine**: Settings → Search Engine offers Google/Bing/DuckDuckGo
+  presets or a custom `%s`-template URL. The new-tab page's search box
+  respects this choice too.
+- **Privacy**: Settings → Privacy can clear browsing history, cache, and/or
+  cookies & site data independently.
 - **Themes**: Light / Dark / System (tracks macOS appearance live) from the
   gear-icon Settings panel. Custom themes are just CSS custom property
   overrides (`--accent`, `--bg-chrome`, etc.) — see
   `src/renderer/chrome/theme.css`.
+- **Tooltips**: hovering any Settings control shows a short description of
+  what it does (`src/renderer/chrome/components/tooltip.js`).
 - **Extensions**: Settings → "Load Unpacked Extension…" picks a folder
   containing a `manifest.json`. Two real platform limitations, not bugs:
   - No one-click Chrome Web Store install is possible in *any* Electron app —
@@ -113,12 +135,12 @@ generate it from a 1024x1024 PNG.
 
 ```
 src/
-  shared/layout.js        Layout constants shared by main + renderer
-  main/                   Electron main process (window, tabs, IPC, stores, menu)
+  shared/layout.js        Layout constants + search engine presets, shared by main + renderer
+  main/                   Electron main process (window, tabs, IPC, stores, menu, downloads)
   preload/                contextBridge-based IPC allowlist
-  renderer/chrome/        The browser's own UI (tab bar/address bar/toolbar/settings)
-  renderer/newtab/        Default page for a fresh tab
-test/                     node:test unit tests for store/bookmarks/URL logic
+  renderer/chrome/        The browser's own UI (tab bar/address bar/toolbar/settings/tooltips)
+  renderer/newtab/        Default page for a fresh tab (search box)
+test/                     node:test unit tests for store/history/downloads/URL logic
 ```
 
 ## Known limitations / good next steps
@@ -126,6 +148,5 @@ test/                     node:test unit tests for store/bookmarks/URL logic
 - No auto-update mechanism (kept out deliberately to avoid background
   telemetry/bloat); add `electron-updater` later if you want it.
 - Extensions: see the two limitations above.
-- No history/downloads UI yet — `did-navigate` events are already wired up
-  in `TabManager`, so a history store can reuse the same `Store` pattern as
-  bookmarks/settings.
+- Downloads are tracked per-session in `downloads.json` but there's no
+  pause/resume/cancel UI yet — only Open and Show-in-Finder.

@@ -19,6 +19,13 @@ function createMainWindow() {
   });
 
   const chromeView = new WebContentsView({
+    // Chromium's default view background is opaque white. Without this, the
+    // chrome view's own document is invisible whenever the active tab's
+    // view is removed from on top of it (e.g. while an overlay like the
+    // settings panel is open) — the CSS `background: transparent` in
+    // theme.css only composites correctly if the native view itself is
+    // told it's transparent too.
+    backgroundColor: '#00000000',
     webPreferences: {
       preload: path.join(__dirname, '../../preload/chrome-preload.js'),
       contextIsolation: true,
@@ -26,6 +33,9 @@ function createMainWindow() {
       sandbox: true,
     },
   });
+  if (typeof chromeView.setBackgroundColor === 'function') {
+    chromeView.setBackgroundColor('#00000000');
+  }
 
   win.contentView.addChildView(chromeView);
 

@@ -64,6 +64,8 @@ function buildAppMenu(tabManager) {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
+        { type: 'separator' },
+        { role: 'toggleDevTools' },
       ],
     },
     {
