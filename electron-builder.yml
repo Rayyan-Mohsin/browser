@@ -1,5 +1,5 @@
-appId: com.rayyanmohsin.browser
-productName: Browser
+appId: com.rayyanmohsin.ruh
+productName: Ruh
 directories:
   output: dist
   buildResources: assets

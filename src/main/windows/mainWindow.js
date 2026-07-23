@@ -6,6 +6,7 @@ const { BrowserWindow, WebContentsView } = require('electron');
 /** Creates the main window plus its always-attached "chrome" view (tab bar/address bar/toolbar). */
 function createMainWindow() {
   const win = new BrowserWindow({
+    title: 'Ruh',
     width: 1280,
     height: 800,
     minWidth: 860,

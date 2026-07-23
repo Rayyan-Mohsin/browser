@@ -1,4 +1,4 @@
-# Browser
+# Ruh
 
 A lightweight, modern, Chromium-based web browser for Apple Silicon (ARM64)
 Macs, built on Electron. Minimalist macOS-native UI (vibrancy, hidden title
@@ -83,9 +83,9 @@ If you later get a paid Apple Developer ID:
 ### App icon
 
 `electron-builder.yml` points at `assets/icon.icns`, which isn't included
-(generating `.icns` requires macOS-only tools). See
-`assets/ICON_INSTRUCTIONS.md` for the one-time `sips`/`iconutil` steps to
-generate it from a 1024x1024 PNG.
+(generating `.icns` requires macOS-only tools). Drop the Ruh logo in at
+`assets/icon.png` (1024x1024) and see `assets/ICON_INSTRUCTIONS.md` for the
+one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
 
 ## Features
 
@@ -100,7 +100,7 @@ generate it from a 1024x1024 PNG.
   merge into one row and the active tab becomes the editable address field).
 - **Bookmarks**: add/remove via the star icon, browse via the bookmarks bar
   (toggle in Settings), stored in
-  `~/Library/Application Support/Browser/bookmarks.json`.
+  `~/Library/Application Support/Ruh/bookmarks.json`.
 - **History**: every visited page is recorded (Settings → History); click an
   entry to revisit it, or clear it entirely. Stored in `history.json`
   alongside bookmarks/settings.
