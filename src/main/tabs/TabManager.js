@@ -2,9 +2,17 @@
 
 const crypto = require('crypto');
 const path = require('path');
-const { WebContentsView } = require('electron');
+const { WebContentsView, nativeTheme } = require('electron');
 const { HEADER_HEIGHT } = require('../../shared/layout');
 const { normalizeInput } = require('./urlNormalize');
+
+// A brand-new WebContentsView paints Chromium's opaque white default for a
+// brief instant before the real page (or our own new-tab page, which uses
+// these exact colors) has loaded and painted. In dark mode that shows as a
+// jarring white flash; matching the eventual background up front removes it.
+function themeBackgroundColor() {
+  return nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#ffffff';
+}
 
 const NEW_TAB_BASE_URL = `file://${path.join(__dirname, '../../renderer/newtab/index.html')}`;
 // Not prefixed with "persist:", so Electron keeps this session entirely in
@@ -92,7 +100,10 @@ class TabManager {
       sandbox: true,
     };
     if (isPrivate) webPreferences.partition = PRIVATE_PARTITION;
-    const view = new WebContentsView({ webPreferences });
+    const view = new WebContentsView({ backgroundColor: themeBackgroundColor(), webPreferences });
+    if (typeof view.setBackgroundColor === 'function') {
+      view.setBackgroundColor(themeBackgroundColor());
+    }
     const tab = {
       id,
       view,

@@ -35,6 +35,7 @@ function section(title) {
 function segmented({ options, current, onChange }) {
   const group = document.createElement('div');
   group.className = 'segmented';
+  const buttons = [];
   for (const opt of options) {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -42,7 +43,18 @@ function segmented({ options, current, onChange }) {
     btn.classList.toggle('selected', opt.value === current);
     btn.setAttribute('aria-pressed', String(opt.value === current));
     if (opt.tooltip) btn.dataset.tooltip = opt.tooltip;
-    btn.addEventListener('click', () => onChange(opt.value));
+    btn.addEventListener('click', () => {
+      // Move the selection immediately: unlike a native radio input, a plain
+      // button doesn't reflect "selected" on its own, and the settings
+      // panel isn't guaranteed to re-render after onChange resolves.
+      buttons.forEach((b, i) => {
+        const isSelected = options[i].value === opt.value;
+        b.classList.toggle('selected', isSelected);
+        b.setAttribute('aria-pressed', String(isSelected));
+      });
+      onChange(opt.value);
+    });
+    buttons.push(btn);
     group.appendChild(btn);
   }
   return group;

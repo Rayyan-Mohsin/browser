@@ -1,7 +1,7 @@
 'use strict';
 
 const path = require('path');
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, nativeTheme } = require('electron');
 
 // Singleton: re-focuses the existing window rather than opening duplicates.
 let preferencesWindow = null;
@@ -25,6 +25,10 @@ function createOrShowPreferencesWindow() {
     minHeight: 420,
     title: 'Advanced Settings',
     fullscreenable: false,
+    show: false,
+    // Matches the page's own --bg so there's no flash of the wrong color
+    // before it loads and paints.
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1e' : '#f2f2f5',
     webPreferences: {
       preload: path.join(__dirname, '../../preload/preferences-preload.js'),
       contextIsolation: true,
@@ -33,6 +37,7 @@ function createOrShowPreferencesWindow() {
     },
   });
 
+  preferencesWindow.once('ready-to-show', () => preferencesWindow.show());
   preferencesWindow.loadFile(path.join(__dirname, '../../renderer/preferences/index.html'));
   preferencesWindow.on('closed', () => {
     preferencesWindow = null;
