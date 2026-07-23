@@ -51,6 +51,9 @@ export function renderCompactToolbar(el, state, api) {
 const SHARE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .06 1.19L8.9 8.51a3 3 0 1 0 0 6.98l6.16 3.32A3 3 0 1 0 18 16a2.98 2.98 0 0 0-.94.15l-6.16-3.32a3.02 3.02 0 0 0 0-1.66l6.16-3.32c.28.1.6.15.94.15Z"/></svg>';
 
+// See tabBar.js for why this lives at module scope rather than per-pill.
+let draggedTabId = null;
+
 /**
  * A pill's outer element (favicon + variable "body" + close button) is
  * reused across renders, keyed by tab id, instead of being torn down and
@@ -63,6 +66,43 @@ const SHARE_ICON_SVG =
 function createPill(tab, api, onChange) {
   const pill = document.createElement('div');
   pill.dataset.tabId = tab.id;
+
+  // Draggability itself is (re-)set per-render in updatePill: the active
+  // pill hosts an editable address input, and disabling drag there keeps a
+  // click-drag inside the text field doing text selection, not a tab-move.
+  pill.addEventListener('dragstart', (e) => {
+    draggedTabId = tab.id;
+    pill.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tab.id);
+  });
+  pill.addEventListener('dragend', () => {
+    draggedTabId = null;
+    pill.classList.remove('dragging');
+  });
+  pill.addEventListener('dragover', (e) => {
+    if (!draggedTabId || draggedTabId === tab.id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    pill.classList.add('drag-over');
+  });
+  pill.addEventListener('dragleave', () => pill.classList.remove('drag-over'));
+  pill.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // let the tab-strip container's own drop handler only catch drops on empty space
+    pill.classList.remove('drag-over');
+    const draggedId = draggedTabId;
+    draggedTabId = null;
+    if (!draggedId || draggedId === tab.id) return;
+    const rect = pill.getBoundingClientRect();
+    const dropBefore = e.clientX - rect.left < rect.width / 2;
+    const beforeId = dropBefore ? tab.id : pill.nextElementSibling?.dataset.tabId || null;
+    await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
+    if (pill.dataset.groupId) {
+      await api.invoke('groups:addTab', { id: draggedId, groupId: pill.dataset.groupId });
+    }
+    onChange();
+  });
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
@@ -177,9 +217,16 @@ function updatePill(pill, tab, isActive, state, api, callbacks) {
     (isActive ? ' active' : '') +
     (tab.isPrivate ? ' private' : '') +
     (tab.groupColor ? ' grouped' : '') +
+    (pill.classList.contains('dragging') ? ' dragging' : '') +
+    (pill.classList.contains('drag-over') ? ' drag-over' : '') +
     (pill.classList.contains('compact-pill-entering') ? ' compact-pill-entering' : '');
   if (tab.groupColor) pill.style.setProperty('--group-color', tab.groupColor);
   else pill.style.removeProperty('--group-color');
+  if (tab.groupId) pill.dataset.groupId = tab.groupId;
+  else delete pill.dataset.groupId;
+  // The active pill's body is an editable address input -- keep it out of
+  // the native drag gesture so dragging inside it selects text as expected.
+  pill.draggable = !isActive;
   pill.onclick = isActive ? null : () => api.invoke('tabs:switch', { id: tab.id });
 
   const favicon = pill.querySelector('.favicon');
@@ -206,6 +253,21 @@ function updatePill(pill, tab, isActive, state, api, callbacks) {
 }
 
 export function renderCompactTabStrip(el, state, api, callbacks) {
+  // See renderTabBar's identical block for why this is bound once.
+  if (!el.dataset.dndBound) {
+    el.dataset.dndBound = '1';
+    el.addEventListener('dragover', (e) => e.preventDefault());
+    el.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const draggedId = draggedTabId;
+      draggedTabId = null;
+      if (draggedId) {
+        await api.invoke('tabs:moveTab', { id: draggedId, beforeId: null });
+        callbacks.onChange();
+      }
+    });
+  }
+
   const existing = new Map();
   el.querySelectorAll('.compact-pill').forEach((p) => existing.set(p.dataset.tabId, p));
 

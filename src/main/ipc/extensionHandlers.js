@@ -1,10 +1,12 @@
 'use strict';
 
 const { ipcMain, dialog } = require('electron');
+const { getContext } = require('../windows/windowRegistry');
 
-function registerExtensionHandlers(extensionManager, win) {
-  ipcMain.handle('extensions:openLoadDialog', async () => {
-    const result = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+function registerExtensionHandlers(extensionManager) {
+  ipcMain.handle('extensions:openLoadDialog', async (e) => {
+    const ctx = getContext(e.sender.id);
+    const result = await dialog.showOpenDialog(ctx ? ctx.win : undefined, { properties: ['openDirectory'] });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
   });

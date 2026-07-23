@@ -1,10 +1,11 @@
 'use strict';
 
 const { ipcMain } = require('electron');
+const { getContext } = require('../windows/windowRegistry');
 
-function registerUiHandlers(tabManager) {
-  ipcMain.handle('ui:setHeaderHeight', (_e, { height }) => tabManager.setHeaderHeight(height));
-  ipcMain.handle('ui:setOverlayOpen', (_e, { open }) => tabManager.setOverlayOpen(open));
+function registerUiHandlers() {
+  ipcMain.handle('ui:setHeaderHeight', (e, { height }) => getContext(e.sender.id)?.tabManager.setHeaderHeight(height));
+  ipcMain.handle('ui:setOverlayOpen', (e, { open }) => getContext(e.sender.id)?.tabManager.setOverlayOpen(open));
 }
 
 module.exports = { registerUiHandlers };

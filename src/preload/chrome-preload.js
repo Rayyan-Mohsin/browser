@@ -14,9 +14,12 @@ const INVOKE_CHANNELS = new Set([
   'downloads:list', 'downloads:openFile', 'downloads:showInFolder',
   'privacy:clearData',
   'page:share',
+  'tabs:moveTab', 'groups:rename', 'groups:addTab',
 ]);
 
-const EVENT_CHANNELS = new Set(['tabs:updated', 'tabs:active-changed', 'theme:changed', 'address-bar:focus']);
+const EVENT_CHANNELS = new Set([
+  'tabs:updated', 'tabs:active-changed', 'theme:changed', 'address-bar:focus', 'group:promptRename',
+]);
 
 contextBridge.exposeInMainWorld('browserAPI', {
   invoke(channel, payload) {

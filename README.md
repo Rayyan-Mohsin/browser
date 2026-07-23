@@ -35,11 +35,9 @@ npm install
 npm run dev
 ```
 
-Opens the browser window with devtools-friendly flags. Closing all windows
-quits the app (standard non-macOS behavior is used here for simplicity; feel
-free to add the usual `activate`/dock-icon reopen handler later if you want
-strict adherence to macOS conventions where the app stays running with no
-windows open).
+Opens the browser window with devtools-friendly flags. On macOS the app
+stays running with no windows open (standard convention); clicking the dock
+icon again (or File → New Window) opens a new one.
 
 ## Testing
 
@@ -99,10 +97,16 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
   tabs and the address bar in two rows) or **Compact** (Safari-style: they
   merge into one row and the active tab becomes the editable address field).
 - **Tab groups**: right-click any tab → "New Group from Tab" / "Add to
-  Group" / "Remove from Group". Colors are assigned automatically from a
-  small fixed palette; grouped tabs get a thin colored line. Deliberately
-  the *only* UI for this — no persistent button or panel, so it's there if
-  you want it and invisible otherwise.
+  Group" / "Rename Group…" / "Remove from Group". Colors are assigned
+  automatically from a small fixed palette; grouped tabs get a thin colored
+  line. Deliberately the *only* persistent UI for this — no toolbar button or
+  panel, so it's there if you want it and invisible otherwise.
+- **Drag-and-drop tabs**: click and drag any tab pill to reorder the tab
+  strip, or drop a tab directly onto another tab that's already in a group to
+  join that group.
+- **Multiple windows**: File → New Window (⌘N) opens a fully independent
+  browser window with its own tabs; Advanced Settings and the app's shared
+  bookmarks/history/downloads/settings stay in sync across all of them.
 - **Bookmarks**: add/remove via the star icon, browse via the bookmarks bar
   (toggle in Settings), stored in
   `~/Library/Application Support/Ruh/bookmarks.json`.

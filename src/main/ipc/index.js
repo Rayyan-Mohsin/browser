@@ -12,30 +12,32 @@ const { registerPrivacyHandlers } = require('./privacyHandlers');
 const { registerPageHandlers } = require('./pageHandlers');
 const { registerAdvancedHandlers } = require('./advancedHandlers');
 const { registerTabContextMenuHandlers } = require('./tabContextMenuHandlers');
+const { registerGroupHandlers } = require('./groupHandlers');
 
-function registerIpcHandlers({
-  tabManager,
-  bookmarksStore,
-  settingsStore,
-  extensionManager,
-  historyStore,
-  downloadManager,
-  session,
-  win,
-  chromeWebContents,
-}) {
-  registerTabHandlers(tabManager);
+/**
+ * Registers every IPC channel exactly once for the app's whole lifetime
+ * (`ipcMain.handle` throws if the same channel is registered twice, which is
+ * why this is called once at startup rather than once per window). Handlers
+ * for per-window concerns (tabs, ui, page, extensions dialogs, context menu,
+ * groups) look up the calling window's own TabManager/BrowserWindow via
+ * `windowRegistry.getContext(event.sender.id)`; handlers for app-wide shared
+ * state (bookmarks, settings, history, downloads, privacy, advanced) close
+ * directly over the single shared store instances instead.
+ */
+function registerIpcHandlers({ bookmarksStore, settingsStore, extensionManager, historyStore, downloadManager, session }) {
+  registerTabHandlers();
   registerBookmarkHandlers(bookmarksStore);
   registerSettingsHandlers(settingsStore);
-  const theme = registerThemeHandlers(settingsStore, chromeWebContents);
-  registerExtensionHandlers(extensionManager, win);
-  registerUiHandlers(tabManager);
+  const theme = registerThemeHandlers(settingsStore);
+  registerExtensionHandlers(extensionManager);
+  registerUiHandlers();
   registerHistoryHandlers(historyStore);
   registerDownloadsHandlers(downloadManager);
   registerPrivacyHandlers(session, historyStore);
-  registerPageHandlers(win);
+  registerPageHandlers();
   registerAdvancedHandlers(settingsStore, historyStore);
-  registerTabContextMenuHandlers(tabManager, win);
+  registerTabContextMenuHandlers();
+  registerGroupHandlers();
   return { theme };
 }
 

@@ -118,6 +118,10 @@ async function init() {
   });
   api.on('theme:changed', applyTheme);
   api.on('address-bar:focus', focusAddressField);
+  api.on('group:promptRename', ({ groupId, name }) => {
+    const next = window.prompt('Rename group', name || '');
+    if (next !== null && next.trim()) api.invoke('groups:rename', { groupId, name: next.trim() });
+  });
 
   state.settings = await api.invoke('settings:get');
   await refreshTabs();

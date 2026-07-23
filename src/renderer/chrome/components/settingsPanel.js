@@ -6,6 +6,7 @@ const SEARCH_ENGINE_OPTIONS = [
 ];
 
 const SHORTCUTS = [
+  ['New Window', '⌘N'],
   ['New Tab', '⌘T'],
   ['New Private Tab', '⌘⇧N'],
   ['Close Tab', '⌘W'],

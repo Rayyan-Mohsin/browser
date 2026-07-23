@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, session, Menu } = require('electron');
+const { app, session, Menu, BrowserWindow } = require('electron');
 const { createMainWindow } = require('./windows/mainWindow');
 const { createOrShowPreferencesWindow } = require('./windows/preferencesWindow');
 const { TabManager } = require('./tabs/TabManager');
@@ -12,6 +12,7 @@ const { ExtensionManager } = require('./extensions/ExtensionManager');
 const { registerIpcHandlers } = require('./ipc');
 const { buildAppMenu } = require('./menu/appMenu');
 const { getUserDataPath } = require('./util/paths');
+const { registerWindow } = require('./windows/windowRegistry');
 
 app.whenReady().then(async () => {
   const bookmarksStore = new BookmarksStore(getUserDataPath('bookmarks.json'));
@@ -25,42 +26,59 @@ app.whenReady().then(async () => {
   // (see advancedHandlers.js).
   historyStore.pruneOlderThan(settingsStore.get().historyRetentionDays);
 
-  const { win, chromeView } = createMainWindow();
-
-  const tabManager = new TabManager(win, {
-    getSearchEngine: () => settingsStore.get().searchEngine,
-    onTabsUpdated: (tabs) => chromeView.webContents.send('tabs:updated', tabs),
-    onActiveChanged: (id) => chromeView.webContents.send('tabs:active-changed', { id }),
-    onNavigate: (entry) => historyStore.add(entry),
-    onFocusAddressBar: () => {
-      // A DOM-level input.focus() in chromeView's own script only works if
-      // chromeView's webContents already holds native OS keyboard focus --
-      // it doesn't automatically grab that focus away from whichever tab
-      // was focused before (e.g. Cmd+T while typing on a page).
-      chromeView.webContents.focus();
-      chromeView.webContents.send('address-bar:focus');
-    },
-  });
-  win.on('resize', () => tabManager.resizeActiveView());
-
-  session.defaultSession.on('will-download', (_event, item) => downloadManager.trackItem(item));
-
   const extensionManager = new ExtensionManager(session.defaultSession, settingsStore);
   await extensionManager.restoreExtensions();
 
+  session.defaultSession.on('will-download', (_event, item) => downloadManager.trackItem(item));
+
+  // Every IPC channel is registered exactly once for the app's whole
+  // lifetime here; per-window handlers resolve which window called them via
+  // windowRegistry (see ipc/index.js), which is what lets each new browser
+  // window (File > New Window) work without re-registering any channel.
   registerIpcHandlers({
-    tabManager,
     bookmarksStore,
     settingsStore,
     extensionManager,
     historyStore,
     downloadManager,
     session: session.defaultSession,
-    win,
-    chromeWebContents: chromeView.webContents,
   });
 
-  Menu.setApplicationMenu(buildAppMenu(tabManager, { openPreferences: createOrShowPreferencesWindow }));
+  /** Creates one fully independent browser window: its own TabManager, its own initial tab. */
+  function createAppWindow() {
+    const { win, chromeView } = createMainWindow();
+
+    const tabManager = new TabManager(win, {
+      getSearchEngine: () => settingsStore.get().searchEngine,
+      onTabsUpdated: (tabs) => chromeView.webContents.send('tabs:updated', tabs),
+      onActiveChanged: (id) => chromeView.webContents.send('tabs:active-changed', { id }),
+      onNavigate: (entry) => historyStore.add(entry),
+      onFocusAddressBar: () => {
+        // A DOM-level input.focus() in chromeView's own script only works if
+        // chromeView's webContents already holds native OS keyboard focus --
+        // it doesn't automatically grab that focus away from whichever tab
+        // was focused before (e.g. Cmd+T while typing on a page).
+        chromeView.webContents.focus();
+        chromeView.webContents.send('address-bar:focus');
+      },
+    });
+    win.on('resize', () => tabManager.resizeActiveView());
+
+    const unregister = registerWindow(chromeView.webContents.id, { win, chromeView, tabManager });
+    win.on('closed', unregister);
+
+    tabManager.createTab();
+    return win;
+  }
+
+  createAppWindow();
+
+  Menu.setApplicationMenu(
+    buildAppMenu({
+      openPreferences: createOrShowPreferencesWindow,
+      createNewWindow: createAppWindow,
+    })
+  );
 
   // Clearing is async, so the app must not exit until it actually finishes --
   // otherwise "clear on quit" could silently no-op depending on timing.
@@ -78,7 +96,9 @@ app.whenReady().then(async () => {
     });
   });
 
-  tabManager.createTab();
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createAppWindow();
+  });
 }).catch((err) => {
   // Without this, a thrown error here silently leaves the app running with
   // no window and no visible diagnostic.

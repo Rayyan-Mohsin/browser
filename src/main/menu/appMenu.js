@@ -1,9 +1,18 @@
 'use strict';
 
-const { Menu, app } = require('electron');
+const { Menu, app, BrowserWindow } = require('electron');
+const { allContexts } = require('../windows/windowRegistry');
+
+/** Finds the TabManager belonging to whichever window currently has OS focus. */
+function focusedTabManager() {
+  const focused = BrowserWindow.getFocusedWindow();
+  if (!focused) return null;
+  const ctx = allContexts().find((c) => c.win.id === focused.id);
+  return ctx ? ctx.tabManager : null;
+}
 
 /** Edit-role items are required for Cmd+C/V/X/A to work in any text input on macOS. */
-function buildAppMenu(tabManager, { openPreferences } = {}) {
+function buildAppMenu({ openPreferences, createNewWindow } = {}) {
   const template = [
     {
       label: app.name,
@@ -31,22 +40,32 @@ function buildAppMenu(tabManager, { openPreferences } = {}) {
       label: 'File',
       submenu: [
         {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+N',
+          click: () => createNewWindow && createNewWindow(),
+        },
+        { type: 'separator' },
+        {
           label: 'New Tab',
           accelerator: 'CmdOrCtrl+T',
           // Opening a plain new tab from a private one stays private,
           // matching how private/incognito windows behave in other browsers.
-          click: () => tabManager.createTab(undefined, { private: tabManager.isActiveTabPrivate() }),
+          click: () => {
+            const tabManager = focusedTabManager();
+            if (tabManager) tabManager.createTab(undefined, { private: tabManager.isActiveTabPrivate() });
+          },
         },
         {
           label: 'New Private Tab',
           accelerator: 'CmdOrCtrl+Shift+N',
-          click: () => tabManager.createTab(undefined, { private: true }),
+          click: () => focusedTabManager()?.createTab(undefined, { private: true }),
         },
         {
           label: 'Close Tab',
           accelerator: 'CmdOrCtrl+W',
           click: () => {
-            if (tabManager.activeId) tabManager.closeTab(tabManager.activeId);
+            const tabManager = focusedTabManager();
+            if (tabManager && tabManager.activeId) tabManager.closeTab(tabManager.activeId);
           },
         },
       ],
@@ -70,7 +89,8 @@ function buildAppMenu(tabManager, { openPreferences } = {}) {
           label: 'Reload',
           accelerator: 'CmdOrCtrl+R',
           click: () => {
-            if (tabManager.activeId) tabManager.reload(tabManager.activeId);
+            const tabManager = focusedTabManager();
+            if (tabManager && tabManager.activeId) tabManager.reload(tabManager.activeId);
           },
         },
         { type: 'separator' },
@@ -89,7 +109,7 @@ function buildAppMenu(tabManager, { openPreferences } = {}) {
     },
     {
       label: 'Window',
-      submenu: [{ role: 'minimize' }, { role: 'zoom' }, { role: 'front' }],
+      submenu: [{ role: 'minimize' }, { role: 'zoom' }, { type: 'separator' }, { role: 'front' }],
     },
   ];
 

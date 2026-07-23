@@ -145,6 +145,28 @@ class TabManager {
     if (!stillUsed) this.groups.delete(groupId);
   }
 
+  renameGroup(groupId, name) {
+    const group = this.groups.get(groupId);
+    const trimmed = (name || '').trim();
+    if (!group || !trimmed) return;
+    group.name = trimmed;
+    this._emitUpdate();
+  }
+
+  /**
+   * Moves `tabId` so it sits immediately before `beforeId` in tab-strip
+   * order (or to the end, if `beforeId` is null/omitted). Used by the tab
+   * bar's native drag-and-drop reordering.
+   */
+  moveTab(tabId, beforeId) {
+    if (!this.tabs.has(tabId) || tabId === beforeId) return;
+    this.order = this.order.filter((id) => id !== tabId);
+    const insertAt = beforeId ? this.order.indexOf(beforeId) : -1;
+    if (insertAt === -1) this.order.push(tabId);
+    else this.order.splice(insertAt, 0, tabId);
+    this._emitUpdate();
+  }
+
   createTab(url, options = {}) {
     const isPrivate = !!options.private;
     const isBlank = !url;

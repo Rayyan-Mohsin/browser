@@ -1,3 +1,9 @@
+// Module-level (not per-pill) so a dragover/drop handler on any *other* pill
+// can see which tab is currently being dragged without threading extra state
+// through render(). Reset on dragend so a drag that's cancelled (dropped
+// outside any pill) never leaves stale state behind.
+let draggedTabId = null;
+
 // Pills are reused across renders (keyed by tab id) instead of being torn
 // down and rebuilt every time. The strip re-renders on background events
 // (favicon/title/loading changes for any tab), and if a new tab's pill were
@@ -6,6 +12,45 @@
 function createPill(tab, api, onChange) {
   const pill = document.createElement('div');
   pill.dataset.tabId = tab.id;
+  pill.draggable = true;
+
+  pill.addEventListener('dragstart', (e) => {
+    draggedTabId = tab.id;
+    pill.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tab.id);
+  });
+  pill.addEventListener('dragend', () => {
+    draggedTabId = null;
+    pill.classList.remove('dragging');
+  });
+  pill.addEventListener('dragover', (e) => {
+    if (!draggedTabId || draggedTabId === tab.id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    pill.classList.add('drag-over');
+  });
+  pill.addEventListener('dragleave', () => pill.classList.remove('drag-over'));
+  pill.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // let the tab-bar container's own drop handler only catch drops on empty space
+    pill.classList.remove('drag-over');
+    const draggedId = draggedTabId;
+    draggedTabId = null;
+    if (!draggedId || draggedId === tab.id) return;
+    // Drop on the left half of the target pill inserts before it; the right
+    // half inserts after it (i.e. before whatever currently follows it).
+    const rect = pill.getBoundingClientRect();
+    const dropBefore = e.clientX - rect.left < rect.width / 2;
+    const beforeId = dropBefore ? tab.id : pill.nextElementSibling?.dataset.tabId || null;
+    await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
+    // Dropping onto a tab that's already in a group pulls the dragged tab
+    // into that same group -- the "drag tabs into groups" gesture.
+    if (pill.dataset.groupId) {
+      await api.invoke('groups:addTab', { id: draggedId, groupId: pill.dataset.groupId });
+    }
+    onChange();
+  });
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
@@ -49,10 +94,14 @@ function updatePill(pill, tab, isActive) {
     (isActive ? ' active' : '') +
     (tab.isPrivate ? ' private' : '') +
     (tab.groupColor ? ' grouped' : '') +
+    (pill.classList.contains('dragging') ? ' dragging' : '') +
+    (pill.classList.contains('drag-over') ? ' drag-over' : '') +
     (pill.classList.contains('tab-pill-entering') ? ' tab-pill-entering' : '');
   pill.title = tab.groupName ? `${tab.title || tab.url} — ${tab.groupName}` : tab.title || tab.url;
   if (tab.groupColor) pill.style.setProperty('--group-color', tab.groupColor);
   else pill.style.removeProperty('--group-color');
+  if (tab.groupId) pill.dataset.groupId = tab.groupId;
+  else delete pill.dataset.groupId;
 
   const favicon = pill.querySelector('.favicon');
   favicon.style.display = tab.favicon ? '' : 'none';
@@ -62,6 +111,23 @@ function updatePill(pill, tab, isActive) {
 }
 
 export function renderTabBar(el, state, api, { onChange }) {
+  // Bound once: lets dropping a dragged tab on empty tab-bar space (not
+  // directly on another pill) move it to the end, instead of the browser's
+  // default drop behavior (which would otherwise do nothing useful here).
+  if (!el.dataset.dndBound) {
+    el.dataset.dndBound = '1';
+    el.addEventListener('dragover', (e) => e.preventDefault());
+    el.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const draggedId = draggedTabId;
+      draggedTabId = null;
+      if (draggedId) {
+        await api.invoke('tabs:moveTab', { id: draggedId, beforeId: null });
+        onChange();
+      }
+    });
+  }
+
   const existing = new Map();
   el.querySelectorAll('.tab-pill').forEach((p) => existing.set(p.dataset.tabId, p));
 

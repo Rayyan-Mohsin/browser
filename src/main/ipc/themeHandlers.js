@@ -1,20 +1,24 @@
 'use strict';
 
 const { ipcMain, nativeTheme } = require('electron');
+const { allContexts } = require('../windows/windowRegistry');
 
 function resolveEffective(mode) {
   if (mode === 'light' || mode === 'dark') return mode;
   return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
 }
 
-function registerThemeHandlers(settingsStore, chromeWebContents) {
+function registerThemeHandlers(settingsStore) {
   const broadcast = () => {
     const { theme } = settingsStore.get();
-    chromeWebContents.send('theme:changed', {
+    const payload = {
       mode: theme.mode,
       effective: resolveEffective(theme.mode),
       custom: theme.custom,
-    });
+    };
+    for (const { chromeView } of allContexts()) {
+      chromeView.webContents.send('theme:changed', payload);
+    }
   };
 
   ipcMain.handle('theme:get', () => {
