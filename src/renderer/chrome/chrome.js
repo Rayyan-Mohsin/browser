@@ -61,6 +61,17 @@ function updateLoadingBar() {
   document.getElementById('loading-bar').classList.toggle('active', !!tab && tab.isLoading);
 }
 
+/** Focuses (and selects) whichever address field is currently rendered, matching the active layout. */
+function focusAddressField() {
+  const input = isCompactLayout()
+    ? document.querySelector('.compact-pill.active input')
+    : document.querySelector('#address-bar input');
+  if (input) {
+    input.focus();
+    input.select();
+  }
+}
+
 function applyTheme({ effective, custom }) {
   document.documentElement.dataset.theme = effective;
   if (custom && custom.colors) {
@@ -86,14 +97,13 @@ function reportHeaderHeight(chromeRoot) {
 }
 
 async function init() {
-  state.settings = await api.invoke('settings:get');
-  await refreshTabs();
-  await refreshBookmarks();
-  if (state.tabs.length > 0) state.activeId = state.tabs[state.tabs.length - 1].id;
-
-  applyTabBarLayout();
-  applyTheme(await api.invoke('theme:get'));
-
+  // Register broadcast listeners FIRST, before any awaited IPC round-trip
+  // below. The main process creates the first tab (and its loading-state
+  // events) concurrently with this script's own startup calls, so if we
+  // subscribed only after those awaits, an early tabs:updated/active-changed
+  // broadcast could arrive and be silently dropped — leaving stale state
+  // (e.g. a permanently-stuck loading bar) until some later, unrelated
+  // event happened to trigger a fresh render.
   api.on('tabs:updated', (tabs) => {
     state.tabs = tabs;
     render();
@@ -103,6 +113,17 @@ async function init() {
     render();
   });
   api.on('theme:changed', applyTheme);
+  api.on('address-bar:focus', focusAddressField);
+
+  state.settings = await api.invoke('settings:get');
+  await refreshTabs();
+  await refreshBookmarks();
+  // Only a fallback: a live tabs:active-changed event above may already have
+  // set this by the time these awaits resolve, and must not be clobbered.
+  if (!state.activeId && state.tabs.length > 0) state.activeId = state.tabs[state.tabs.length - 1].id;
+
+  applyTabBarLayout();
+  applyTheme(await api.invoke('theme:get'));
 
   const settingsToggles = document.querySelectorAll('.settings-toggle-btn');
   const settingsPanel = document.getElementById('settings-panel');

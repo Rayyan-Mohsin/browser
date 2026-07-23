@@ -25,6 +25,7 @@ app.whenReady().then(async () => {
     onTabsUpdated: (tabs) => chromeView.webContents.send('tabs:updated', tabs),
     onActiveChanged: (id) => chromeView.webContents.send('tabs:active-changed', { id }),
     onNavigate: (entry) => historyStore.add(entry),
+    onFocusAddressBar: () => chromeView.webContents.send('address-bar:focus'),
   });
   win.on('resize', () => tabManager.resizeActiveView());
 

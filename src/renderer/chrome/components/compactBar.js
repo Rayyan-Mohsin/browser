@@ -1,3 +1,8 @@
+/** Our own local new-tab page shouldn't leak its internal file:// URL into the address field. */
+function isNewTabUrl(url) {
+  return !!url && url.startsWith('file://') && url.includes('/renderer/newtab/');
+}
+
 function attachSelectAllOnClick(input) {
   let wasFocused = false;
   input.addEventListener('mousedown', () => {
@@ -77,10 +82,12 @@ export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChan
     }
 
     if (isActive) {
+      const isNewTab = isNewTabUrl(tab.url);
       const restoring = focusedTabId === tab.id && focusedSnapshot;
       const input = document.createElement('input');
       input.type = 'text';
-      input.value = restoring ? focusedSnapshot.value : tab.url;
+      input.value = restoring ? focusedSnapshot.value : isNewTab ? '' : tab.url;
+      input.placeholder = isNewTab ? 'Enter URL here' : 'Search or enter address';
       input.autocomplete = 'off';
       input.spellcheck = false;
       attachSelectAllOnClick(input);
@@ -89,7 +96,7 @@ export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChan
           await api.invoke('tabs:navigate', { id: tab.id, input: input.value });
           input.blur();
         } else if (e.key === 'Escape') {
-          input.value = tab.url;
+          input.value = isNewTab ? '' : tab.url;
           input.blur();
         }
       });
@@ -102,24 +109,28 @@ export function renderCompactTabStrip(el, state, api, { onChange, onBookmarkChan
         });
       }
 
-      const isBookmarked = state.bookmarks.bookmarks.some((b) => b.url === tab.url);
+      const canActOnPage = !isNewTab;
+      const isBookmarked = canActOnPage && state.bookmarks.bookmarks.some((b) => b.url === tab.url);
       const shareBtn = document.createElement('button');
       shareBtn.className = 'star-btn';
+      shareBtn.disabled = !canActOnPage;
       shareBtn.dataset.tooltip = 'Share this page';
       shareBtn.innerHTML =
         '<svg viewBox="0 0 24 24" width="13" height="13"><path fill="currentColor" d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .06 1.19L8.9 8.51a3 3 0 1 0 0 6.98l6.16 3.32A3 3 0 1 0 18 16a2.98 2.98 0 0 0-.94.15l-6.16-3.32a3.02 3.02 0 0 0 0-1.66l6.16-3.32c.28.1.6.15.94.15Z"/></svg>';
       shareBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (onShare) onShare(tab);
+        if (canActOnPage && onShare) onShare(tab);
       });
       pill.appendChild(shareBtn);
 
       const star = document.createElement('button');
       star.className = 'star-btn';
+      star.disabled = !canActOnPage;
       star.textContent = isBookmarked ? '★' : '☆';
       star.dataset.tooltip = isBookmarked ? 'Remove bookmark' : 'Add bookmark';
       star.addEventListener('click', async (e) => {
         e.stopPropagation();
+        if (!canActOnPage) return;
         const existing = state.bookmarks.bookmarks.find((b) => b.url === tab.url);
         if (existing) await api.invoke('bookmarks:remove', { id: existing.id });
         else await api.invoke('bookmarks:add', { url: tab.url, title: tab.title || tab.url });

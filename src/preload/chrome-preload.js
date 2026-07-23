@@ -16,7 +16,7 @@ const INVOKE_CHANNELS = new Set([
   'page:share',
 ]);
 
-const EVENT_CHANNELS = new Set(['tabs:updated', 'tabs:active-changed', 'theme:changed']);
+const EVENT_CHANNELS = new Set(['tabs:updated', 'tabs:active-changed', 'theme:changed', 'address-bar:focus']);
 
 contextBridge.exposeInMainWorld('browserAPI', {
   invoke(channel, payload) {

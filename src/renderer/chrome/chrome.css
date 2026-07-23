@@ -5,6 +5,7 @@
   background: var(--bg-chrome);
   -webkit-app-region: drag;
   position: relative;
+  transition: background-color 200ms ease;
 }
 
 .titlebar-spacer {
@@ -95,6 +96,8 @@
   cursor: pointer;
 }
 .compact-pill .star-btn:hover { background: rgba(0, 0, 0, 0.12); }
+.compact-pill .star-btn:disabled { opacity: 0.35; cursor: default; }
+.compact-pill .star-btn:disabled:hover { background: transparent; }
 .compact-pill .close {
   flex-shrink: 0;
   width: 16px;
@@ -228,7 +231,7 @@
   transform: scale(0.95) translateY(-6px);
   transform-origin: top right;
   pointer-events: none;
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition: opacity 160ms ease, transform 160ms ease, background-color 200ms ease;
 }
 .settings-panel.open {
   opacity: 1;

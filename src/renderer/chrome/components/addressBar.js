@@ -1,3 +1,13 @@
+/** Our own local new-tab page shouldn't leak its internal file:// URL into the address bar. */
+function isNewTabUrl(url) {
+  return !!url && url.startsWith('file://') && url.includes('/renderer/newtab/');
+}
+
+function displayUrlFor(tab) {
+  if (!tab || isNewTabUrl(tab.url)) return '';
+  return tab.url;
+}
+
 function attachSelectAllOnClick(input) {
   let wasFocused = false;
   input.addEventListener('mousedown', () => {
@@ -30,7 +40,6 @@ export function renderAddressBar(el, state, api, { onBookmarkChange, onShare }) 
   if (!input) {
     input = document.createElement('input');
     input.type = 'text';
-    input.placeholder = 'Search or enter address';
     input.autocomplete = 'off';
     input.spellcheck = false;
     attachSelectAllOnClick(input);
@@ -39,36 +48,39 @@ export function renderAddressBar(el, state, api, { onBookmarkChange, onShare }) 
         await api.invoke('tabs:navigate', { id: state.activeId, input: input.value });
         input.blur();
       } else if (e.key === 'Escape') {
-        input.value = tab ? tab.url : '';
+        input.value = displayUrlFor(tab);
         input.blur();
       }
     });
   }
+  input.placeholder = isNewTabUrl(tab && tab.url) ? 'Enter URL here' : 'Search or enter address';
   if (!inputWasFocused || tabChanged) {
-    input.value = tab ? tab.url : '';
+    input.value = displayUrlFor(tab);
   }
   input.dataset.tabId = state.activeId || '';
 
   el.innerHTML = '';
   el.appendChild(input);
 
+  const canActOnPage = !!tab && !isNewTabUrl(tab.url);
+
   const shareBtn = document.createElement('button');
   shareBtn.className = 'icon-btn';
   shareBtn.dataset.tooltip = 'Share this page';
-  shareBtn.disabled = !tab;
+  shareBtn.disabled = !canActOnPage;
   shareBtn.innerHTML =
     '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M18 8a3 3 0 1 0-2.83-4H15a3 3 0 0 0 .06 1.19L8.9 8.51a3 3 0 1 0 0 6.98l6.16 3.32A3 3 0 1 0 18 16a2.98 2.98 0 0 0-.94.15l-6.16-3.32a3.02 3.02 0 0 0 0-1.66l6.16-3.32c.28.1.6.15.94.15Z"/></svg>';
   shareBtn.addEventListener('click', () => {
-    if (tab && onShare) onShare(tab);
+    if (canActOnPage && onShare) onShare(tab);
   });
   el.appendChild(shareBtn);
 
   const star = document.createElement('button');
   star.className = 'icon-btn';
-  const isBookmarked = !!tab && state.bookmarks.bookmarks.some((b) => b.url === tab.url);
+  const isBookmarked = canActOnPage && state.bookmarks.bookmarks.some((b) => b.url === tab.url);
   star.textContent = isBookmarked ? '★' : '☆';
   star.dataset.tooltip = isBookmarked ? 'Remove bookmark' : 'Add bookmark';
-  star.disabled = !tab;
+  star.disabled = !canActOnPage;
   star.addEventListener('click', async () => {
     if (!tab) return;
     const existing = state.bookmarks.bookmarks.find((b) => b.url === tab.url);

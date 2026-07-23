@@ -11,6 +11,7 @@
     background: #ffffff;
     color: #1a1a1a;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    transition: background-color 200ms ease, color 200ms ease;
   }
   @media (prefers-color-scheme: dark) {
     html, body { background: #1e1e1e; color: #f5f5f5; }
@@ -46,7 +47,7 @@
   <div class="wrap">
     <div class="wordmark">Browser</div>
     <form id="search-form">
-      <input id="search-input" type="text" placeholder="Search or type a URL" autofocus autocomplete="off" spellcheck="false" />
+      <input id="search-input" type="text" placeholder="Search or type a URL" autocomplete="off" spellcheck="false" />
     </form>
   </div>
   <script>

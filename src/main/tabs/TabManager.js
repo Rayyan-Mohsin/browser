@@ -15,12 +15,13 @@ function buildNewTabUrl(searchEngineTemplate) {
 
 /** Manages one WebContentsView per tab, attaching only the active one below the chrome header. */
 class TabManager {
-  constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged, onNavigate }) {
+  constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged, onNavigate, onFocusAddressBar }) {
     this.win = win;
     this.getSearchEngine = getSearchEngine;
     this.onTabsUpdated = onTabsUpdated || (() => {});
     this.onActiveChanged = onActiveChanged || (() => {});
     this.onNavigate = onNavigate || (() => {});
+    this.onFocusAddressBar = onFocusAddressBar || (() => {});
     this.tabs = new Map();
     this.order = [];
     this.activeId = null;
@@ -55,6 +56,7 @@ class TabManager {
   }
 
   createTab(url) {
+    const isBlank = !url;
     const id = crypto.randomUUID();
     const view = new WebContentsView({
       webPreferences: {
@@ -99,6 +101,10 @@ class TabManager {
 
     this.switchTab(id);
     this._emitUpdate();
+    // A brand-new blank tab should be ready for the user to type a URL
+    // immediately, matching Safari/Chrome, rather than leaving focus in
+    // the new-tab page's own search box.
+    if (isBlank) this.onFocusAddressBar();
     return this._publicState(tab);
   }
 
