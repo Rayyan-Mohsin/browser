@@ -1,3 +1,5 @@
+import { createGroupChip, updateGroupChip } from './groupChip.js';
+
 /** Our own local new-tab page shouldn't leak its internal file:// URL into the address field. */
 function isNewTabUrl(url) {
   return !!url && url.startsWith('file://') && url.includes('/renderer/newtab/');
@@ -53,6 +55,17 @@ const SHARE_ICON_SVG =
 
 // See tabBar.js for why this lives at module scope rather than per-pill.
 let draggedTabId = null;
+let draggedGroupId = null;
+
+// See tabBar.js's identical helper for why this exists.
+async function finishDrop(api, draggedId, targetGroupId, beforeId) {
+  await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
+  if (targetGroupId) {
+    if (targetGroupId !== draggedGroupId) await api.invoke('groups:addTab', { id: draggedId, groupId: targetGroupId });
+  } else if (draggedGroupId) {
+    await api.invoke('groups:removeTab', { id: draggedId });
+  }
+}
 
 /**
  * A pill's outer element (favicon + variable "body" + close button) is
@@ -72,12 +85,14 @@ function createPill(tab, api, onChange) {
   // click-drag inside the text field doing text selection, not a tab-move.
   pill.addEventListener('dragstart', (e) => {
     draggedTabId = tab.id;
+    draggedGroupId = pill.dataset.groupId || null;
     pill.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', tab.id);
   });
   pill.addEventListener('dragend', () => {
     draggedTabId = null;
+    draggedGroupId = null;
     pill.classList.remove('dragging');
   });
   pill.addEventListener('dragover', (e) => {
@@ -97,10 +112,7 @@ function createPill(tab, api, onChange) {
     const rect = pill.getBoundingClientRect();
     const dropBefore = e.clientX - rect.left < rect.width / 2;
     const beforeId = dropBefore ? tab.id : pill.nextElementSibling?.dataset.tabId || null;
-    await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
-    if (pill.dataset.groupId) {
-      await api.invoke('groups:addTab', { id: draggedId, groupId: pill.dataset.groupId });
-    }
+    await finishDrop(api, draggedId, pill.dataset.groupId || null, beforeId);
     onChange();
   });
 
@@ -219,6 +231,7 @@ function updatePill(pill, tab, isActive, state, api, callbacks) {
     (tab.groupColor ? ' grouped' : '') +
     (pill.classList.contains('dragging') ? ' dragging' : '') +
     (pill.classList.contains('drag-over') ? ' drag-over' : '') +
+    (tab.groupId && tab.groupCollapsed ? ' group-collapsed-hidden' : '') +
     (pill.classList.contains('compact-pill-entering') ? ' compact-pill-entering' : '');
   if (tab.groupColor) pill.style.setProperty('--group-color', tab.groupColor);
   else pill.style.removeProperty('--group-color');
@@ -262,7 +275,7 @@ export function renderCompactTabStrip(el, state, api, callbacks) {
       const draggedId = draggedTabId;
       draggedTabId = null;
       if (draggedId) {
-        await api.invoke('tabs:moveTab', { id: draggedId, beforeId: null });
+        await finishDrop(api, draggedId, null, null);
         callbacks.onChange();
       }
     });
@@ -270,9 +283,37 @@ export function renderCompactTabStrip(el, state, api, callbacks) {
 
   const existing = new Map();
   el.querySelectorAll('.compact-pill').forEach((p) => existing.set(p.dataset.tabId, p));
+  const existingChips = new Map();
+  el.querySelectorAll('.group-chip').forEach((c) => existingChips.set(c.dataset.groupId, c));
+
+  const groupCounts = new Map();
+  for (const tab of state.tabs) {
+    if (tab.groupId) groupCounts.set(tab.groupId, (groupCounts.get(tab.groupId) || 0) + 1);
+  }
 
   let anchor = null;
+  let lastGroupId = null;
   for (const tab of state.tabs) {
+    if (tab.groupId && tab.groupId !== lastGroupId) {
+      let chip = existingChips.get(tab.groupId);
+      if (chip) existingChips.delete(tab.groupId);
+      else {
+        chip = createGroupChip(api, callbacks.onChange, async (groupId) => {
+          const draggedId = draggedTabId;
+          draggedTabId = null;
+          if (draggedId) {
+            await finishDrop(api, draggedId, groupId, null);
+            callbacks.onChange();
+          }
+        });
+      }
+      updateGroupChip(chip, tab, groupCounts.get(tab.groupId));
+      const wantedNextSibling = anchor ? anchor.nextSibling : el.firstChild;
+      if (wantedNextSibling !== chip) el.insertBefore(chip, wantedNextSibling);
+      anchor = chip;
+    }
+    lastGroupId = tab.groupId || null;
+
     let pill = existing.get(tab.id);
     if (pill) {
       existing.delete(tab.id);
@@ -287,6 +328,7 @@ export function renderCompactTabStrip(el, state, api, callbacks) {
   }
 
   for (const stalePill of existing.values()) stalePill.remove();
+  for (const staleChip of existingChips.values()) staleChip.remove();
 
   let addBtn = el.querySelector('.compact-add');
   if (!addBtn) {

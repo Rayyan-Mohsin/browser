@@ -14,7 +14,8 @@ const INVOKE_CHANNELS = new Set([
   'downloads:list', 'downloads:openFile', 'downloads:showInFolder',
   'privacy:clearData',
   'page:share',
-  'tabs:moveTab', 'groups:rename', 'groups:addTab',
+  'tabs:moveTab', 'groups:rename', 'groups:addTab', 'groups:removeTab',
+  'groups:toggleCollapse', 'groups:ungroup', 'groups:showContextMenu',
 ]);
 
 const EVENT_CHANNELS = new Set([

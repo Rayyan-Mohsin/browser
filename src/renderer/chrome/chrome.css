@@ -22,7 +22,7 @@
 }
 
 #toolbar, #address-bar, .settings-toggle-btn, .tab-bar-row, .bookmarks-bar-row, .settings-panel,
-#compact-toolbar, .compact-tab-strip {
+#compact-toolbar, .compact-tab-strip, .modal-overlay {
   -webkit-app-region: no-drag;
 }
 
@@ -43,7 +43,14 @@
   align-items: center;
   gap: 5px;
   overflow-x: auto;
+  /* Scrolling itself stays functional (trackpad/wheel) -- only the visible
+     scrollbar track is hidden. Without this, briefly creating a new active
+     tab (which grows to fill space while the previous active tab shrinks
+     back down in the same layout pass) can make the strip's content
+     transiently wider than its box, flashing a scrollbar for one frame. */
+  scrollbar-width: none;
 }
+.compact-tab-strip::-webkit-scrollbar { display: none; }
 
 .compact-pill {
   display: flex;
@@ -508,3 +515,104 @@
   outline-offset: -2px;
   border-radius: 8px;
 }
+
+/* A collapsed group's member tabs are kept in the DOM (for reuse across
+   renders) but hidden -- only the group's own chip is visible. */
+.tab-pill.group-collapsed-hidden, .compact-pill.group-collapsed-hidden {
+  display: none;
+}
+
+/* Group chip: the always-visible, clickable representation of a tab group.
+   Click toggles collapse/expand; right-click opens rename/ungroup. */
+.group-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  margin: 2px 2px;
+  border-radius: var(--radius-tab);
+  background: color-mix(in srgb, var(--group-color) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--group-color) 40%, transparent);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+.group-chip:hover { background: color-mix(in srgb, var(--group-color) 28%, transparent); }
+.group-chip:active { transform: scale(0.97); }
+.group-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.group-chip-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-chip.collapsed { background: color-mix(in srgb, var(--group-color) 30%, transparent); }
+.group-chip.drag-over { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Text-input modal (used for e.g. renaming a group) -- window.prompt() isn't
+   implemented by Electron, so this is the app's own equivalent. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  width: 280px;
+  background: var(--bg-chrome);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.modal-input {
+  height: 30px;
+  padding: 0 9px;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+:root[data-theme='dark'] .modal-input { background: rgba(255, 255, 255, 0.08); }
+.modal-input:focus { border-color: var(--accent); }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal-btn {
+  height: 28px;
+  padding: 0 14px;
+  border-radius: var(--radius-control);
+  border: none;
+  background: var(--hover-bg);
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.modal-btn.primary { background: var(--accent); color: #fff; }

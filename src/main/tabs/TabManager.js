@@ -89,6 +89,7 @@ class TabManager {
       groupId: tab.groupId || null,
       groupName: group ? group.name : null,
       groupColor: group ? group.color : null,
+      groupCollapsed: group ? !!group.collapsed : false,
     };
   }
 
@@ -114,7 +115,7 @@ class TabManager {
     const color = GROUP_COLORS[(this._nextGroupNumber - 1) % GROUP_COLORS.length];
     const name = `Group ${this._nextGroupNumber}`;
     this._nextGroupNumber += 1;
-    this.groups.set(id, { id, name, color });
+    this.groups.set(id, { id, name, color, collapsed: false });
     const oldGroupId = tab.groupId;
     tab.groupId = id;
     if (oldGroupId) this._pruneEmptyGroup(oldGroupId);
@@ -126,8 +127,21 @@ class TabManager {
     if (!tab || !this.groups.has(groupId)) return;
     const oldGroupId = tab.groupId;
     tab.groupId = groupId;
+    // Keep a group's tabs contiguous in the strip -- this is what lets the
+    // group collapse into a single chip instead of needing to represent
+    // scattered tabs.
+    this._makeContiguousWithGroup(tabId, groupId);
     if (oldGroupId && oldGroupId !== groupId) this._pruneEmptyGroup(oldGroupId);
     this._emitUpdate();
+  }
+
+  /** Moves tabId to sit directly after the last other member of groupId (if any) in tab order. */
+  _makeContiguousWithGroup(tabId, groupId) {
+    const members = this.order.filter((id) => id !== tabId && this.tabs.get(id).groupId === groupId);
+    if (members.length === 0) return;
+    const lastMemberId = members[members.length - 1];
+    this.order = this.order.filter((id) => id !== tabId);
+    this.order.splice(this.order.indexOf(lastMemberId) + 1, 0, tabId);
   }
 
   removeTabFromGroup(tabId) {
@@ -150,6 +164,43 @@ class TabManager {
     const trimmed = (name || '').trim();
     if (!group || !trimmed) return;
     group.name = trimmed;
+    this._emitUpdate();
+  }
+
+  /**
+   * Collapses a group down to just its chip (member tabs hidden in the
+   * renderer) or expands it back out. If the active tab is inside a group
+   * being collapsed, switch to the nearest tab outside it first, so the
+   * active tab never becomes an invisible pill the user can't click.
+   */
+  toggleGroupCollapsed(groupId) {
+    const group = this.groups.get(groupId);
+    if (!group) return;
+    group.collapsed = !group.collapsed;
+    if (group.collapsed) {
+      const activeTab = this.tabs.get(this.activeId);
+      if (activeTab && activeTab.groupId === groupId) {
+        const idx = this.order.indexOf(this.activeId);
+        const isOutside = (id) => this.tabs.get(id).groupId !== groupId;
+        const after = this.order.slice(idx + 1).find(isOutside);
+        const before = this.order
+          .slice(0, idx)
+          .reverse()
+          .find(isOutside);
+        const nextId = after || before;
+        if (nextId) this.switchTab(nextId);
+      }
+    }
+    this._emitUpdate();
+  }
+
+  /** Removes every tab from a group and deletes it, without closing any tabs. */
+  ungroupAll(groupId) {
+    if (!this.groups.has(groupId)) return;
+    for (const tab of this.tabs.values()) {
+      if (tab.groupId === groupId) tab.groupId = null;
+    }
+    this.groups.delete(groupId);
     this._emitUpdate();
   }
 

@@ -1,8 +1,26 @@
+import { createGroupChip, updateGroupChip } from './groupChip.js';
+
 // Module-level (not per-pill) so a dragover/drop handler on any *other* pill
 // can see which tab is currently being dragged without threading extra state
 // through render(). Reset on dragend so a drag that's cancelled (dropped
 // outside any pill) never leaves stale state behind.
 let draggedTabId = null;
+let draggedGroupId = null;
+
+/** Ends a drop by placing the tab and updating its group membership as needed. */
+async function finishDrop(api, draggedId, targetGroupId, beforeId) {
+  await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
+  if (targetGroupId) {
+    // Dropping onto a tab that's already in a group pulls the dragged tab
+    // into that same group -- the "drag tabs into groups" gesture.
+    if (targetGroupId !== draggedGroupId) await api.invoke('groups:addTab', { id: draggedId, groupId: targetGroupId });
+  } else if (draggedGroupId) {
+    // Dropped among ungrouped tabs (or empty space): leaving keeps every
+    // group's tabs contiguous, which is what lets a group collapse into a
+    // single chip.
+    await api.invoke('groups:removeTab', { id: draggedId });
+  }
+}
 
 // Pills are reused across renders (keyed by tab id) instead of being torn
 // down and rebuilt every time. The strip re-renders on background events
@@ -16,12 +34,14 @@ function createPill(tab, api, onChange) {
 
   pill.addEventListener('dragstart', (e) => {
     draggedTabId = tab.id;
+    draggedGroupId = pill.dataset.groupId || null;
     pill.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', tab.id);
   });
   pill.addEventListener('dragend', () => {
     draggedTabId = null;
+    draggedGroupId = null;
     pill.classList.remove('dragging');
   });
   pill.addEventListener('dragover', (e) => {
@@ -43,12 +63,7 @@ function createPill(tab, api, onChange) {
     const rect = pill.getBoundingClientRect();
     const dropBefore = e.clientX - rect.left < rect.width / 2;
     const beforeId = dropBefore ? tab.id : pill.nextElementSibling?.dataset.tabId || null;
-    await api.invoke('tabs:moveTab', { id: draggedId, beforeId });
-    // Dropping onto a tab that's already in a group pulls the dragged tab
-    // into that same group -- the "drag tabs into groups" gesture.
-    if (pill.dataset.groupId) {
-      await api.invoke('groups:addTab', { id: draggedId, groupId: pill.dataset.groupId });
-    }
+    await finishDrop(api, draggedId, pill.dataset.groupId || null, beforeId);
     onChange();
   });
 
@@ -96,6 +111,7 @@ function updatePill(pill, tab, isActive) {
     (tab.groupColor ? ' grouped' : '') +
     (pill.classList.contains('dragging') ? ' dragging' : '') +
     (pill.classList.contains('drag-over') ? ' drag-over' : '') +
+    (tab.groupId && tab.groupCollapsed ? ' group-collapsed-hidden' : '') +
     (pill.classList.contains('tab-pill-entering') ? ' tab-pill-entering' : '');
   pill.title = tab.groupName ? `${tab.title || tab.url} — ${tab.groupName}` : tab.title || tab.url;
   if (tab.groupColor) pill.style.setProperty('--group-color', tab.groupColor);
@@ -122,7 +138,7 @@ export function renderTabBar(el, state, api, { onChange }) {
       const draggedId = draggedTabId;
       draggedTabId = null;
       if (draggedId) {
-        await api.invoke('tabs:moveTab', { id: draggedId, beforeId: null });
+        await finishDrop(api, draggedId, null, null);
         onChange();
       }
     });
@@ -130,9 +146,39 @@ export function renderTabBar(el, state, api, { onChange }) {
 
   const existing = new Map();
   el.querySelectorAll('.tab-pill').forEach((p) => existing.set(p.dataset.tabId, p));
+  const existingChips = new Map();
+  el.querySelectorAll('.group-chip').forEach((c) => existingChips.set(c.dataset.groupId, c));
+
+  const groupCounts = new Map();
+  for (const tab of state.tabs) {
+    if (tab.groupId) groupCounts.set(tab.groupId, (groupCounts.get(tab.groupId) || 0) + 1);
+  }
 
   let anchor = null;
+  let lastGroupId = null;
   for (const tab of state.tabs) {
+    // Tabs sharing a group are kept contiguous by TabManager, so the group's
+    // chip only needs to appear once, right before the first tab of its run.
+    if (tab.groupId && tab.groupId !== lastGroupId) {
+      let chip = existingChips.get(tab.groupId);
+      if (chip) existingChips.delete(tab.groupId);
+      else {
+        chip = createGroupChip(api, onChange, async (groupId) => {
+          const draggedId = draggedTabId;
+          draggedTabId = null;
+          if (draggedId) {
+            await finishDrop(api, draggedId, groupId, null);
+            onChange();
+          }
+        });
+      }
+      updateGroupChip(chip, tab, groupCounts.get(tab.groupId));
+      const wantedNextSibling = anchor ? anchor.nextSibling : el.firstChild;
+      if (wantedNextSibling !== chip) el.insertBefore(chip, wantedNextSibling);
+      anchor = chip;
+    }
+    lastGroupId = tab.groupId || null;
+
     let pill = existing.get(tab.id);
     if (pill) {
       existing.delete(tab.id);
@@ -146,8 +192,9 @@ export function renderTabBar(el, state, api, { onChange }) {
     anchor = pill;
   }
 
-  // Whatever's left in `existing` belongs to closed tabs.
+  // Whatever's left in `existing`/`existingChips` belongs to closed tabs/groups.
   for (const stalePill of existing.values()) stalePill.remove();
+  for (const staleChip of existingChips.values()) staleChip.remove();
 
   let addBtn = el.querySelector('.tab-add');
   if (!addBtn) {

@@ -36,6 +36,46 @@ function isNewTabUrl(url) {
   return !!url && url.startsWith('file://') && url.includes('/renderer/newtab/');
 }
 
+/**
+ * Electron doesn't implement window.prompt() (unlike alert()/confirm(),
+ * which it does show as native dialogs) -- calling it silently no-ops. This
+ * is the app's own equivalent, backed by the hidden #text-prompt-modal in
+ * index.html. Resolves to the entered text, or null if cancelled.
+ */
+function promptText(title, defaultValue) {
+  const overlay = document.getElementById('text-prompt-modal');
+  const titleEl = overlay.querySelector('.modal-title');
+  const input = overlay.querySelector('.modal-input');
+  const okBtn = overlay.querySelector('.modal-ok');
+  const cancelBtn = overlay.querySelector('.modal-cancel');
+
+  titleEl.textContent = title;
+  input.value = defaultValue || '';
+  overlay.classList.remove('hidden');
+  input.focus();
+  input.select();
+
+  return new Promise((resolve) => {
+    const cleanup = (result) => {
+      overlay.classList.add('hidden');
+      input.onkeydown = null;
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      overlay.onclick = null;
+      resolve(result);
+    };
+    okBtn.onclick = () => cleanup(input.value);
+    cancelBtn.onclick = () => cleanup(null);
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') cleanup(input.value);
+      else if (e.key === 'Escape') cleanup(null);
+    };
+    overlay.onclick = (e) => {
+      if (e.target === overlay) cleanup(null);
+    };
+  });
+}
+
 function isCompactLayout() {
   return ((state.settings && state.settings.tabBarLayout) || 'separate') === 'compact';
 }
@@ -118,8 +158,8 @@ async function init() {
   });
   api.on('theme:changed', applyTheme);
   api.on('address-bar:focus', focusAddressField);
-  api.on('group:promptRename', ({ groupId, name }) => {
-    const next = window.prompt('Rename group', name || '');
+  api.on('group:promptRename', async ({ groupId, name }) => {
+    const next = await promptText('Rename Group', name || '');
     if (next !== null && next.trim()) api.invoke('groups:rename', { groupId, name: next.trim() });
   });
 

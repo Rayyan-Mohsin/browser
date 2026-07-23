@@ -100,10 +100,14 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
   Group" / "Rename Group…" / "Remove from Group". Colors are assigned
   automatically from a small fixed palette; grouped tabs get a thin colored
   line. Deliberately the *only* persistent UI for this — no toolbar button or
-  panel, so it's there if you want it and invisible otherwise.
+  panel, so it's there if you want it and invisible otherwise. Every group
+  also gets a small colored chip in the tab strip; click it to collapse the
+  group's tabs down to just that chip, or click again to expand them back
+  out (right-click the chip to rename/ungroup/toggle while collapsed).
 - **Drag-and-drop tabs**: click and drag any tab pill to reorder the tab
-  strip, or drop a tab directly onto another tab that's already in a group to
-  join that group.
+  strip, or drop a tab onto another tab (or a group's chip) to join that
+  group; dragging a tab out of its group to an ungrouped spot removes it
+  from the group.
 - **Multiple windows**: File → New Window (⌘N) opens a fully independent
   browser window with its own tabs; Advanced Settings and the app's shared
   bookmarks/history/downloads/settings stay in sync across all of them.

@@ -35,6 +35,20 @@
     <div id="settings-panel" class="settings-panel"></div>
     <div id="loading-bar"></div>
   </div>
+
+  <!-- Electron doesn't implement window.prompt(), so text input (e.g.
+       renaming a tab group) uses this small in-page modal instead. -->
+  <div id="text-prompt-modal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-title"></div>
+      <input type="text" class="modal-input" autocomplete="off" spellcheck="false" />
+      <div class="modal-actions">
+        <button type="button" class="modal-btn modal-cancel">Cancel</button>
+        <button type="button" class="modal-btn primary modal-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="chrome.js"></script>
 </body>
 </html>
