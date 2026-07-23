@@ -1,7 +1,7 @@
 {
   "name": "ruh",
   "productName": "Ruh",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "Ruh - a lightweight, modern Chromium-based browser for Apple Silicon Macs.",
   "main": "src/main/index.js",

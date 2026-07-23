@@ -4,7 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const INVOKE_CHANNELS = new Set([
   'tabs:create', 'tabs:close', 'tabs:switch', 'tabs:list', 'tabs:navigate',
-  'tabs:reload', 'tabs:stop', 'tabs:goBack', 'tabs:goForward',
+  'tabs:reload', 'tabs:stop', 'tabs:goBack', 'tabs:goForward', 'tabs:showContextMenu',
   'bookmarks:add', 'bookmarks:remove', 'bookmarks:update', 'bookmarks:list', 'bookmarks:createFolder',
   'settings:get', 'settings:set', 'settings:setSearchEngine',
   'theme:get', 'theme:set',

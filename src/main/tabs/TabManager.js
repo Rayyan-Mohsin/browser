@@ -28,6 +28,12 @@ function buildNewTabUrl(searchEngineTemplate, isPrivate) {
   return `${NEW_TAB_BASE_URL}?${params.toString()}`;
 }
 
+// Basic tab grouping: colors are assigned automatically, round-robin, from
+// this small fixed palette rather than letting the user pick one -- keeps
+// the feature genuinely "basic" (see ipc/tabContextMenuHandlers.js for the
+// only UI: a right-click context menu on a tab).
+const GROUP_COLORS = ['#0a84ff', '#30d158', '#ff9f0a', '#ff453a', '#bf5af2', '#64d2ff'];
+
 /** Manages one WebContentsView per tab, attaching only the active one below the chrome header. */
 class TabManager {
   constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged, onNavigate, onFocusAddressBar }) {
@@ -40,6 +46,8 @@ class TabManager {
     this.tabs = new Map();
     this.order = [];
     this.activeId = null;
+    this.groups = new Map(); // groupId -> { id, name, color }
+    this._nextGroupNumber = 1;
     // Fallback used only until the chrome renderer reports its real
     // measured height (its content size can vary with font size, zoom, or
     // the tab bar layout setting, so a hardcoded constant can't be kept
@@ -68,6 +76,7 @@ class TabManager {
   _publicState(tab) {
     const wc = tab.view.webContents;
     const nav = wc.navigationHistory;
+    const group = tab.groupId ? this.groups.get(tab.groupId) : null;
     return {
       id: tab.id,
       url: tab.state.url,
@@ -77,6 +86,9 @@ class TabManager {
       canGoBack: nav ? nav.canGoBack() : wc.canGoBack(),
       canGoForward: nav ? nav.canGoForward() : wc.canGoForward(),
       isPrivate: tab.isPrivate,
+      groupId: tab.groupId || null,
+      groupName: group ? group.name : null,
+      groupColor: group ? group.color : null,
     };
   }
 
@@ -88,6 +100,49 @@ class TabManager {
   isActiveTabPrivate() {
     const tab = this.tabs.get(this.activeId);
     return !!(tab && tab.isPrivate);
+  }
+
+  listGroups() {
+    return Array.from(this.groups.values());
+  }
+
+  /** Creates a new group (auto-named/colored) containing just this one tab. */
+  createGroupForTab(tabId) {
+    const tab = this.tabs.get(tabId);
+    if (!tab) return;
+    const id = crypto.randomUUID();
+    const color = GROUP_COLORS[(this._nextGroupNumber - 1) % GROUP_COLORS.length];
+    const name = `Group ${this._nextGroupNumber}`;
+    this._nextGroupNumber += 1;
+    this.groups.set(id, { id, name, color });
+    const oldGroupId = tab.groupId;
+    tab.groupId = id;
+    if (oldGroupId) this._pruneEmptyGroup(oldGroupId);
+    this._emitUpdate();
+  }
+
+  addTabToGroup(tabId, groupId) {
+    const tab = this.tabs.get(tabId);
+    if (!tab || !this.groups.has(groupId)) return;
+    const oldGroupId = tab.groupId;
+    tab.groupId = groupId;
+    if (oldGroupId && oldGroupId !== groupId) this._pruneEmptyGroup(oldGroupId);
+    this._emitUpdate();
+  }
+
+  removeTabFromGroup(tabId) {
+    const tab = this.tabs.get(tabId);
+    if (!tab || !tab.groupId) return;
+    const oldGroupId = tab.groupId;
+    tab.groupId = null;
+    this._pruneEmptyGroup(oldGroupId);
+    this._emitUpdate();
+  }
+
+  /** A group with no tabs left in it is just clutter -- drop it silently. */
+  _pruneEmptyGroup(groupId) {
+    const stillUsed = Array.from(this.tabs.values()).some((t) => t.groupId === groupId);
+    if (!stillUsed) this.groups.delete(groupId);
   }
 
   createTab(url, options = {}) {
@@ -108,6 +163,7 @@ class TabManager {
       id,
       view,
       isPrivate,
+      groupId: null,
       state: {
         url: url || buildNewTabUrl(this.getSearchEngine(), isPrivate),
         title: 'New Tab',
@@ -192,10 +248,12 @@ class TabManager {
       this.fullscreenTabId = null;
       this.win.setFullScreen(false);
     }
+    const groupId = tab.groupId;
 
     tab.view.webContents.close();
     this.tabs.delete(id);
     this.order = this.order.filter((tid) => tid !== id);
+    if (groupId) this._pruneEmptyGroup(groupId);
 
     if (!wasActive) {
       this._emitUpdate();

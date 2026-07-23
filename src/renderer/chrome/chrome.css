@@ -122,6 +122,11 @@
 :root[data-theme='dark'] .compact-pill.private { background: rgba(120, 90, 220, 0.16); }
 :root[data-theme='dark'] .compact-pill.private.active { background: rgba(120, 90, 220, 0.22); }
 
+/* Tab grouping (see TabManager's groups map) — a thin colored line is the
+   entire visual language, deliberately minimal since this is opt-in via a
+   right-click menu, not a promoted feature. */
+.compact-pill.grouped { box-shadow: inset 0 2px 0 0 var(--group-color); }
+
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -225,6 +230,8 @@
 .tab-pill.private.active { background: rgba(120, 90, 220, 0.16); }
 :root[data-theme='dark'] .tab-pill.private { background: rgba(120, 90, 220, 0.16); }
 :root[data-theme='dark'] .tab-pill.private.active { background: rgba(120, 90, 220, 0.24); }
+
+.tab-pill.grouped { box-shadow: inset 0 2px 0 0 var(--group-color); }
 
 .bookmarks-bar-row {
   display: flex;

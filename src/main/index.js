@@ -32,7 +32,14 @@ app.whenReady().then(async () => {
     onTabsUpdated: (tabs) => chromeView.webContents.send('tabs:updated', tabs),
     onActiveChanged: (id) => chromeView.webContents.send('tabs:active-changed', { id }),
     onNavigate: (entry) => historyStore.add(entry),
-    onFocusAddressBar: () => chromeView.webContents.send('address-bar:focus'),
+    onFocusAddressBar: () => {
+      // A DOM-level input.focus() in chromeView's own script only works if
+      // chromeView's webContents already holds native OS keyboard focus --
+      // it doesn't automatically grab that focus away from whichever tab
+      // was focused before (e.g. Cmd+T while typing on a page).
+      chromeView.webContents.focus();
+      chromeView.webContents.send('address-bar:focus');
+    },
   });
   win.on('resize', () => tabManager.resizeActiveView());
 

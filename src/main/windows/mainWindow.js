@@ -54,7 +54,13 @@ function createMainWindow() {
   // would never fire here. Reveal once the chrome view actually has content,
   // with a fail-safe timeout so a load error never leaves the app invisible.
   const showWindow = () => {
-    if (!win.isDestroyed() && !win.isVisible()) win.show();
+    if (win.isDestroyed()) return;
+    if (!win.isVisible()) win.show();
+    // A window with multiple WebContentsViews doesn't automatically decide
+    // which one holds native keyboard focus. Without this, typing right
+    // after launch goes nowhere until the user clicks into the chrome view
+    // (which is what the address-bar autofocus below depends on).
+    chromeView.webContents.focus();
   };
   chromeView.webContents.once('did-finish-load', showWindow);
   chromeView.webContents.once('did-fail-load', showWindow);

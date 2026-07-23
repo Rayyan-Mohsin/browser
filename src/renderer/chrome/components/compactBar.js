@@ -87,6 +87,10 @@ function createPill(tab, api, onChange) {
       onChange();
     }
   });
+  pill.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    api.invoke('tabs:showContextMenu', { id: tab.id });
+  });
 
   pill.classList.add('compact-pill-entering');
   pill.addEventListener('animationend', () => pill.classList.remove('compact-pill-entering'), { once: true });
@@ -172,7 +176,10 @@ function updatePill(pill, tab, isActive, state, api, callbacks) {
     'compact-pill' +
     (isActive ? ' active' : '') +
     (tab.isPrivate ? ' private' : '') +
+    (tab.groupColor ? ' grouped' : '') +
     (pill.classList.contains('compact-pill-entering') ? ' compact-pill-entering' : '');
+  if (tab.groupColor) pill.style.setProperty('--group-color', tab.groupColor);
+  else pill.style.removeProperty('--group-color');
   pill.onclick = isActive ? null : () => api.invoke('tabs:switch', { id: tab.id });
 
   const favicon = pill.querySelector('.favicon');

@@ -32,6 +32,10 @@ async function shareTab(tab) {
   }
 }
 
+function isNewTabUrl(url) {
+  return !!url && url.startsWith('file://') && url.includes('/renderer/newtab/');
+}
+
 function isCompactLayout() {
   return ((state.settings && state.settings.tabBarLayout) || 'separate') === 'compact';
 }
@@ -163,6 +167,14 @@ async function init() {
   const chromeRoot = document.getElementById('chrome-root');
   reportHeaderHeight(chromeRoot);
   new ResizeObserver(() => reportHeaderHeight(chromeRoot)).observe(chromeRoot);
+
+  // Cold launch typically starts on a single blank tab. Focus it directly
+  // here rather than relying solely on the main process's address-bar:focus
+  // push (sent from TabManager.createTab) — that event fires while this
+  // script is still starting up and could arrive before the listener above
+  // is registered.
+  const activeTab = state.tabs.find((t) => t.id === state.activeId);
+  if (activeTab && isNewTabUrl(activeTab.url)) focusAddressField();
 }
 
 init();

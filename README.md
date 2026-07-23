@@ -98,6 +98,11 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
 - **Tab bar layout**: Settings → Tab Bar lets you pick **Separate** (default:
   tabs and the address bar in two rows) or **Compact** (Safari-style: they
   merge into one row and the active tab becomes the editable address field).
+- **Tab groups**: right-click any tab → "New Group from Tab" / "Add to
+  Group" / "Remove from Group". Colors are assigned automatically from a
+  small fixed palette; grouped tabs get a thin colored line. Deliberately
+  the *only* UI for this — no persistent button or panel, so it's there if
+  you want it and invisible otherwise.
 - **Bookmarks**: add/remove via the star icon, browse via the bookmarks bar
   (toggle in Settings), stored in
   `~/Library/Application Support/Ruh/bookmarks.json`.
