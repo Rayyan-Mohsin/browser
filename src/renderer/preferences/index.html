@@ -153,6 +153,17 @@
     </div>
 
     <div class="card">
+      <h2>Tabs</h2>
+      <div class="row">
+        <div>
+          <div class="row-label">Open new tabs in the background</div>
+          <div class="row-desc">"Open Link/Image in New Tab" won't switch you to it -- click it when you're ready.</div>
+        </div>
+        <button class="switch" id="open-links-background-switch"></button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Privacy</h2>
       <div class="row">
         <div>
@@ -264,6 +275,17 @@
       }
     }
 
+    async function initOpenLinksInBackground() {
+      const settings = await api.invoke('settings:get');
+      const sw = document.getElementById('open-links-background-switch');
+      sw.classList.toggle('on', settings.openLinksInBackground !== false);
+      sw.addEventListener('click', async () => {
+        const next = !sw.classList.contains('on');
+        sw.classList.toggle('on', next);
+        await api.invoke('settings:set', { openLinksInBackground: next });
+      });
+    }
+
     async function initClearOnQuit() {
       const settings = await api.invoke('settings:get');
       const sw = document.getElementById('clear-on-quit-switch');
@@ -302,11 +324,13 @@
       if (!confirm('Reset all settings to their defaults? This does not delete your bookmarks or history.')) return;
       await api.invoke('advanced:resetSettings');
       initRetention();
+      initOpenLinksInBackground();
       initClearOnQuit();
     });
 
     loadHistory('');
     initRetention();
+    initOpenLinksInBackground();
     initClearOnQuit();
     initAbout();
   </script>

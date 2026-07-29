@@ -99,7 +99,9 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
 - **Page context menu**: right-click a link, image, selection, or editable
   field on any page for the usual actions (open link in a new/private tab,
   copy link/image address, save image, cut/copy/paste, back/forward/reload,
-  inspect element).
+  inspect element). "Open Link/Image in New Tab" opens it in the background
+  by default -- toggle this in Advanced Settings if you'd rather it switch
+  you to the new tab immediately.
 - **Zoom**: ⌘+/⌘-/⌘0 always zoom the active page, never the browser's own
   tab bar/address bar — those stay a fixed size no matter what.
 - **Tab bar layout**: Settings → Tab Bar lets you pick **Separate** (default:
@@ -171,8 +173,8 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
   Settings…, ⌘,) — deliberately *not* part of the in-app Settings popover —
   with a searchable full history list with per-entry delete, an automatic
   history-retention policy (applied on launch and instantly on change),
-  "clear all data on quit", app/Electron/Chromium version info, and a
-  reset-to-defaults action.
+  whether new tabs open in the background, "clear all data on quit",
+  app/Electron/Chromium version info, and a reset-to-defaults action.
 
 ## Project layout
 

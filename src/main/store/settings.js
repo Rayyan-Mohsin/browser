@@ -16,6 +16,9 @@ const DEFAULTS = {
   // Advanced-settings-window-only fields (not exposed in the in-app panel):
   historyRetentionDays: null, // null = keep forever; else auto-prune older entries
   clearDataOnQuit: false,
+  // "Open Link in New Tab" (page context menu) opens without switching to
+  // it when true; false restores the old switch-immediately behavior.
+  openLinksInBackground: true,
 };
 
 class SettingsStore {

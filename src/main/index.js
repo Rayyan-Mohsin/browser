@@ -50,6 +50,7 @@ app.whenReady().then(async () => {
 
     const tabManager = new TabManager(win, {
       getSearchEngine: () => settingsStore.get().searchEngine,
+      getOpenLinksInBackground: () => settingsStore.get().openLinksInBackground,
       onTabsUpdated: (tabs) => chromeView.webContents.send('tabs:updated', tabs),
       onActiveChanged: (id) => chromeView.webContents.send('tabs:active-changed', { id }),
       onNavigate: (entry) => historyStore.add(entry),

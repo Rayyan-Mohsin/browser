@@ -40,9 +40,10 @@ const GROUP_COLORS = ['#0a84ff', '#30d158', '#ff9f0a', '#ff453a', '#bf5af2', '#6
 
 /** Manages one WebContentsView per tab, attaching only the active one below the chrome header. */
 class TabManager {
-  constructor(win, { getSearchEngine, onTabsUpdated, onActiveChanged, onNavigate, onFocusAddressBar }) {
+  constructor(win, { getSearchEngine, getOpenLinksInBackground, onTabsUpdated, onActiveChanged, onNavigate, onFocusAddressBar }) {
     this.win = win;
     this.getSearchEngine = getSearchEngine;
+    this.getOpenLinksInBackground = getOpenLinksInBackground || (() => true);
     this.onTabsUpdated = onTabsUpdated || (() => {});
     this.onActiveChanged = onActiveChanged || (() => {});
     this.onNavigate = onNavigate || (() => {});
@@ -224,6 +225,10 @@ class TabManager {
 
   createTab(url, options = {}) {
     const isPrivate = !!options.private;
+    // Only meaningful if some tab is already active to stay on -- a
+    // "background" tab still has to become the active one if it's the
+    // very first tab ever created (e.g. on launch).
+    const openInBackground = !!options.background && !!this.activeId;
     const id = crypto.randomUUID();
     const webPreferences = {
       contextIsolation: true,
@@ -294,26 +299,37 @@ class TabManager {
 
     wc.loadURL(tab.state.url);
 
-    // switchTab() itself focuses the address bar for a blank/new-tab page
-    // (see below), which covers this brand-new tab too.
-    this.switchTab(id);
-    this._emitUpdate();
+    if (openInBackground) {
+      // Just add the pill -- don't attach its view or change activeId, so
+      // the user stays exactly where they were.
+      this._emitUpdate();
+    } else {
+      // switchTab() itself focuses the address bar for a blank/new-tab page
+      // (see below), which covers this brand-new tab too.
+      this.switchTab(id);
+    }
     return this._publicState(tab);
   }
 
   /** Native right-click menu for actual page content -- links, images, selected/editable text. */
   _showPageContextMenu(id, tab, wc, params) {
     const template = [];
+    // Whether "Open ... in New Tab" switches to it immediately or leaves you
+    // on the current tab (Advanced Settings -> "Open new tabs in the
+    // background"). Explicit new-tab creation elsewhere (Cmd+T, the "+"
+    // button) is unaffected -- this only applies to opening something *from*
+    // a page you're already on.
+    const background = this.getOpenLinksInBackground();
 
     if (params.linkURL) {
-      template.push({ label: 'Open Link in New Tab', click: () => this.createTab(params.linkURL, { private: tab.isPrivate }) });
-      template.push({ label: 'Open Link in New Private Tab', click: () => this.createTab(params.linkURL, { private: true }) });
+      template.push({ label: 'Open Link in New Tab', click: () => this.createTab(params.linkURL, { private: tab.isPrivate, background }) });
+      template.push({ label: 'Open Link in New Private Tab', click: () => this.createTab(params.linkURL, { private: true, background }) });
       template.push({ label: 'Copy Link Address', click: () => clipboard.writeText(params.linkURL) });
       template.push({ type: 'separator' });
     }
 
     if (params.hasImageContents && params.srcURL) {
-      template.push({ label: 'Open Image in New Tab', click: () => this.createTab(params.srcURL, { private: tab.isPrivate }) });
+      template.push({ label: 'Open Image in New Tab', click: () => this.createTab(params.srcURL, { private: tab.isPrivate, background }) });
       // Reuses the same session download pipeline as any other download
       // (will-download -> DownloadManager) -- no separate save-file logic needed.
       template.push({ label: 'Save Image As…', click: () => wc.downloadURL(params.srcURL) });
