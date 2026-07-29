@@ -94,6 +94,20 @@ function buildAppMenu({ openPreferences, createNewWindow } = {}) {
           },
         },
         { type: 'separator' },
+        // Literal "Control", not "CmdOrCtrl": Cmd+Tab is reserved by macOS
+        // for switching apps, so tab-cycling has to stay on the physical
+        // Ctrl key even on Mac.
+        {
+          label: 'Select Next Tab',
+          accelerator: 'Control+Tab',
+          click: () => focusedTabManager()?.selectNextTab(),
+        },
+        {
+          label: 'Select Previous Tab',
+          accelerator: 'Control+Shift+Tab',
+          click: () => focusedTabManager()?.selectPreviousTab(),
+        },
+        { type: 'separator' },
         // Deliberately NOT the built-in resetZoom/zoomIn/zoomOut roles:
         // those target whichever WebContents currently has OS focus, which
         // can be chromeView itself (the tab bar/address bar UI) -- e.g.

@@ -92,7 +92,10 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
   preserves each page's live state. The header's real height is measured
   live by the renderer and reported to the main process (not hardcoded),
   so button sizing, tab bar layout, and the bookmarks bar can all change
-  without ever letting page content overlap the header.
+  without ever letting page content overlap the header. Cycle tabs with
+  ⌃⇥ / ⌃⇧⇥ (Control+Tab / Control+Shift+Tab); switching to a blank/new-tab
+  page — however you get there — always focuses the address bar so you can
+  start typing immediately.
 - **Page context menu**: right-click a link, image, selection, or editable
   field on any page for the usual actions (open link in a new/private tab,
   copy link/image address, save image, cut/copy/paste, back/forward/reload,

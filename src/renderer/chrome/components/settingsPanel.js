@@ -10,6 +10,8 @@ const SHORTCUTS = [
   ['New Tab', '⌘T'],
   ['New Private Tab', '⌘⇧N'],
   ['Close Tab', '⌘W'],
+  ['Next Tab', '⌃⇥'],
+  ['Previous Tab', '⌃⇧⇥'],
   ['Reload', '⌘R'],
   ['Zoom In', '⌘+'],
   ['Zoom Out', '⌘-'],

@@ -28,6 +28,10 @@ function buildNewTabUrl(searchEngineTemplate, isPrivate) {
   return `${NEW_TAB_BASE_URL}?${params.toString()}`;
 }
 
+function isNewTabUrl(url) {
+  return !!url && url.startsWith(NEW_TAB_BASE_URL);
+}
+
 // Basic tab grouping: colors are assigned automatically, round-robin, from
 // this small fixed palette rather than letting the user pick one -- keeps
 // the feature genuinely "basic" (see ipc/tabContextMenuHandlers.js for the
@@ -220,7 +224,6 @@ class TabManager {
 
   createTab(url, options = {}) {
     const isPrivate = !!options.private;
-    const isBlank = !url;
     const id = crypto.randomUUID();
     const webPreferences = {
       contextIsolation: true,
@@ -291,12 +294,10 @@ class TabManager {
 
     wc.loadURL(tab.state.url);
 
+    // switchTab() itself focuses the address bar for a blank/new-tab page
+    // (see below), which covers this brand-new tab too.
     this.switchTab(id);
     this._emitUpdate();
-    // A brand-new blank tab should be ready for the user to type a URL
-    // immediately, matching Safari/Chrome, rather than leaving focus in
-    // the new-tab page's own search box.
-    if (isBlank) this.onFocusAddressBar();
     return this._publicState(tab);
   }
 
@@ -353,6 +354,24 @@ class TabManager {
     this.resizeActiveView();
     this.onActiveChanged(id);
     this._emitUpdate();
+    // A blank/new-tab page has nothing worth focusing on itself, so land the
+    // caret in the address bar instead of leaving the user to click it --
+    // covers brand-new tabs, clicking an existing blank tab's pill, and
+    // Ctrl+Tab/Ctrl+Shift+Tab cycling alike, since they all go through here.
+    if (isNewTabUrl(tab.state.url)) this.onFocusAddressBar();
+  }
+
+  /** Cycles to the next/previous tab in strip order, wrapping around -- Ctrl+Tab / Ctrl+Shift+Tab. */
+  selectNextTab() {
+    if (this.order.length < 2) return;
+    const idx = this.order.indexOf(this.activeId);
+    this.switchTab(this.order[(idx + 1) % this.order.length]);
+  }
+
+  selectPreviousTab() {
+    if (this.order.length < 2) return;
+    const idx = this.order.indexOf(this.activeId);
+    this.switchTab(this.order[(idx - 1 + this.order.length) % this.order.length]);
   }
 
   closeTab(id) {
