@@ -94,13 +94,37 @@ function buildAppMenu({ openPreferences, createNewWindow } = {}) {
           },
         },
         { type: 'separator' },
-        // Built-in roles: Electron/Chromium handle the Cmd/Ctrl+=/-/0
-        // accelerators (including the shifted "+" key) and target
-        // whichever WebContents currently has focus, which correctly
-        // reaches the active tab's page.
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
+        // Deliberately NOT the built-in resetZoom/zoomIn/zoomOut roles:
+        // those target whichever WebContents currently has OS focus, which
+        // can be chromeView itself (the tab bar/address bar UI) -- e.g.
+        // right after clicking into the address bar -- so Cmd/Ctrl+=/-/0
+        // would zoom the browser's own chrome instead of the page. These
+        // explicit handlers always act on the active tab's page instead.
+        {
+          label: 'Actual Size',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => focusedTabManager()?.resetZoom(),
+        },
+        {
+          label: 'Zoom In',
+          accelerator: 'CmdOrCtrl+Plus',
+          click: () => focusedTabManager()?.zoomIn(),
+        },
+        // Hidden duplicate: on most keyboards the unshifted zoom-in key is
+        // "=", and Chromium/Electron's own zoomIn role listens for both
+        // "Plus" and "=" -- a single MenuItem can only carry one
+        // accelerator, so this covers the second one invisibly.
+        {
+          label: 'Zoom In (=)',
+          accelerator: 'CmdOrCtrl+=',
+          visible: false,
+          click: () => focusedTabManager()?.zoomIn(),
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => focusedTabManager()?.zoomOut(),
+        },
         { type: 'separator' },
         { role: 'togglefullscreen' },
         { type: 'separator' },

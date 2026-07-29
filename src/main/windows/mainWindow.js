@@ -38,6 +38,16 @@ function createMainWindow() {
     chromeView.setBackgroundColor('#00000000');
   }
 
+  // The tab bar/address bar area must never zoom -- Cmd/Ctrl+=/-/0 are
+  // handled explicitly in menu/appMenu.js so they always target the active
+  // tab's page instead, but a trackpad pinch or Ctrl+scroll-wheel on the
+  // header can still ask chromeView itself to zoom. Disable pinch-zoom and
+  // snap back immediately if anything else changes its zoom level.
+  chromeView.webContents.setVisualZoomLevelLimits(1, 1);
+  chromeView.webContents.on('zoom-changed', () => {
+    chromeView.webContents.zoomLevel = 0;
+  });
+
   win.contentView.addChildView(chromeView);
 
   const syncChromeBounds = () => {

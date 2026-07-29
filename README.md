@@ -93,6 +93,12 @@ one-time `sips`/`iconutil` steps to turn it into `assets/icon.icns`.
   live by the renderer and reported to the main process (not hardcoded),
   so button sizing, tab bar layout, and the bookmarks bar can all change
   without ever letting page content overlap the header.
+- **Page context menu**: right-click a link, image, selection, or editable
+  field on any page for the usual actions (open link in a new/private tab,
+  copy link/image address, save image, cut/copy/paste, back/forward/reload,
+  inspect element).
+- **Zoom**: ⌘+/⌘-/⌘0 always zoom the active page, never the browser's own
+  tab bar/address bar — those stay a fixed size no matter what.
 - **Tab bar layout**: Settings → Tab Bar lets you pick **Separate** (default:
   tabs and the address bar in two rows) or **Compact** (Safari-style: they
   merge into one row and the active tab becomes the editable address field).

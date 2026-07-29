@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const path = require('path');
-const { WebContentsView, nativeTheme } = require('electron');
+const { WebContentsView, nativeTheme, Menu, clipboard } = require('electron');
 const { HEADER_HEIGHT } = require('../../shared/layout');
 const { normalizeInput } = require('./urlNormalize');
 
@@ -287,6 +287,8 @@ class TabManager {
       this.resizeActiveView();
     });
 
+    wc.on('context-menu', (_e, params) => this._showPageContextMenu(id, tab, wc, params));
+
     wc.loadURL(tab.state.url);
 
     this.switchTab(id);
@@ -296,6 +298,47 @@ class TabManager {
     // the new-tab page's own search box.
     if (isBlank) this.onFocusAddressBar();
     return this._publicState(tab);
+  }
+
+  /** Native right-click menu for actual page content -- links, images, selected/editable text. */
+  _showPageContextMenu(id, tab, wc, params) {
+    const template = [];
+
+    if (params.linkURL) {
+      template.push({ label: 'Open Link in New Tab', click: () => this.createTab(params.linkURL, { private: tab.isPrivate }) });
+      template.push({ label: 'Open Link in New Private Tab', click: () => this.createTab(params.linkURL, { private: true }) });
+      template.push({ label: 'Copy Link Address', click: () => clipboard.writeText(params.linkURL) });
+      template.push({ type: 'separator' });
+    }
+
+    if (params.hasImageContents && params.srcURL) {
+      template.push({ label: 'Open Image in New Tab', click: () => this.createTab(params.srcURL, { private: tab.isPrivate }) });
+      // Reuses the same session download pipeline as any other download
+      // (will-download -> DownloadManager) -- no separate save-file logic needed.
+      template.push({ label: 'Save Image As…', click: () => wc.downloadURL(params.srcURL) });
+      template.push({ label: 'Copy Image Address', click: () => clipboard.writeText(params.srcURL) });
+      template.push({ type: 'separator' });
+    }
+
+    if (params.isEditable) {
+      template.push({ label: 'Cut', role: 'cut', enabled: params.editFlags.canCut });
+      template.push({ label: 'Copy', role: 'copy', enabled: params.editFlags.canCopy });
+      template.push({ label: 'Paste', role: 'paste', enabled: params.editFlags.canPaste });
+      template.push({ label: 'Select All', role: 'selectAll', enabled: params.editFlags.canSelectAll });
+      template.push({ type: 'separator' });
+    } else if (params.selectionText) {
+      template.push({ label: 'Copy', role: 'copy' });
+      template.push({ type: 'separator' });
+    }
+
+    const nav = wc.navigationHistory;
+    template.push({ label: 'Back', enabled: nav ? nav.canGoBack() : wc.canGoBack(), click: () => this.goBack(id) });
+    template.push({ label: 'Forward', enabled: nav ? nav.canGoForward() : wc.canGoForward(), click: () => this.goForward(id) });
+    template.push({ label: 'Reload', click: () => this.reload(id) });
+    template.push({ type: 'separator' });
+    template.push({ label: 'Inspect Element', click: () => wc.inspectElement(params.x, params.y) });
+
+    Menu.buildFromTemplate(template).popup({ window: this.win });
   }
 
   switchTab(id) {
@@ -369,6 +412,28 @@ class TabManager {
     if (!wc) return;
     if (wc.navigationHistory) wc.navigationHistory.goForward();
     else wc.goForward();
+  }
+
+  /**
+   * Zoom always targets the active tab's own page, never chromeView (the
+   * tab bar/address bar UI) -- see menu/appMenu.js, which calls these
+   * instead of Electron's built-in zoomIn/zoomOut/resetZoom menu roles
+   * (those target whichever WebContents currently has OS focus, which can
+   * be chromeView itself, e.g. right after clicking the address bar).
+   */
+  zoomIn() {
+    const wc = this.tabs.get(this.activeId)?.view.webContents;
+    if (wc) wc.zoomLevel = Math.min(wc.zoomLevel + 0.5, 9);
+  }
+
+  zoomOut() {
+    const wc = this.tabs.get(this.activeId)?.view.webContents;
+    if (wc) wc.zoomLevel = Math.max(wc.zoomLevel - 0.5, -9);
+  }
+
+  resetZoom() {
+    const wc = this.tabs.get(this.activeId)?.view.webContents;
+    if (wc) wc.zoomLevel = 0;
   }
 
   resizeActiveView() {
